@@ -296,10 +296,20 @@ var CATS=[
  {n:"Vehicle",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],p:["with two wheels","on rails"],c:["seats more than ten people","is faster than a horse"]},
  {n:"Hobby",a:"a hobby",sub:["an outdoor hobby","an expensive hobby"],p:[],c:["is done alone","needs special equipment","is quiet"]},
  {n:"Bird",a:"a bird",sub:["a bird of prey","a pet bird"],p:["with a long beak"],c:["can't fly","lives near water","is bigger than a chicken","is mostly black"]},
- {n:"Toy",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]}
+ {n:"Toy",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]},
+ {n:"Holiday",a:"a holiday",sub:["a winter holiday","a made-up holiday"],p:["in the summer","with presents"],c:["involves fireworks","you get the day off for","has its own songs"]},
+ {n:"Tool",a:"a tool",sub:["a power tool","a garden tool"],p:["with a handle","with a blade"],c:["needs electricity","fits in a pocket","is used on wood"]},
+ {n:"Building",a:"a building",sub:["a famous building","a building on a farm"],p:["in Europe","with a dome"],c:["is taller than ten floors","people live in","is open at night"]},
+ {n:"School subject",a:"a school subject",sub:["a science class","an elective class"],p:["with homework","with a lab"],c:["involves numbers","is taught outdoors","everyone secretly likes"]},
+ {n:"Dance",a:"a dance",sub:["a ballroom dance","a dance from the 70s"],p:["for two people","with a famous song"],c:["is done in a line","involves jumping","is from Latin America"]},
+ {n:"Flower",a:"a flower",sub:["a wildflower","a wedding flower"],p:["with thorns","from Asia"],c:["is red","grows on a tree","smells strong"]},
+ {n:"Insect",a:"an insect",sub:["a flying insect","a garden bug"],p:["with stripes","with a stinger"],c:["glows","lives in a colony","is bigger than a coin"]},
+ {n:"Candy",a:"a candy",sub:["a chocolate bar","a chewy candy"],p:["with nuts","from a movie theater"],c:["is sour","comes in a wrapper","is sold at Halloween"]},
+ {n:"Mythical creature",a:"a mythical creature",sub:["a sea monster","a creature from Greek myths"],p:["with wings","with more than one head"],c:["breathes fire","lives underground","is friendly"]},
+ {n:"Weather",a:"a kind of weather",sub:["a kind of storm"],p:["with lightning","in the winter"],c:["is wet","can knock down a tree","happens in deserts"]}
 ];
 var LETTERS="ABCDEFGHIJLMNOPRSTUVW".split("");
-var ANS=5, VOTE_SECS=120, STOP_PAUSE=9300, ONLINE_MS=16000; // STOP_PAUSE leaves room for the stop-sign trailer
+var ANS=12, PROMPT_OPTS=[5,8,12,16,20], SECS_OPTS=[60,90,120,180,240,300], VOTE_SECS=120, STOP_PAUSE=9300, ONLINE_MS=16000; // STOP_PAUSE leaves room for the stop-sign trailer
 
 /* ================= utils ================= */
 function $(s){return document.querySelector(s)}
@@ -346,11 +356,12 @@ function pickCount(){ // mostly small, sometimes ridiculous, very occasionally a
   if(r<.91)return 8+rnd(3);   // 8-10
   return 11+rnd(10);          // 11-20
 }
-function makePrompts(letter){
-  var cats=shuffle(CATS.slice()).slice(0,ANS);
+function makePrompts(letter,n){
+  n=n||ANS;var cats=shuffle(CATS.slice()).slice(0,n);
   var counts=cats.map(pickCount);
-  counts[rnd(ANS)]=0;                                  // every round has at least one plain prompt
-  if(Math.random()<.3){var j=rnd(ANS);if(counts[j]!==0||counts.filter(function(n){return !n}).length>1)counts[j]=10+rnd(11)} // the occasional monster (10-20)
+  counts[rnd(n)]=0;                                    // every round has at least one plain prompt
+  if(n>=10)counts[rnd(n)]=0;                          // big rounds get a second one
+  if(Math.random()<.3+n*.02){var j=rnd(n);if(counts[j]!==0||counts.filter(function(n){return !n}).length>1)counts[j]=10+rnd(11)} // the occasional monster (10-20)
   return cats.map(function(c,i){
     var n=Math.min(MAX_CONDS,counts[i]);
     if(!n){
@@ -396,7 +407,9 @@ function promptHTML(p,i,extra,cls,hideRule){ // hideRule: answering is on your o
 
 /* ================= silliness ================= */
 var REDUCED=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-var ROLL_MS=1100, CARD_MS=650, DEAL_MS=ROLL_MS+CARD_MS*ANS+400; // the host adds DEAL_MS to the round clock
+var ROLL_MS=1100;
+function cardMs(n){return Math.max(260,Math.min(650,4200/n))}       // more cards, faster deal
+function dealMs(n){return ROLL_MS+cardMs(n)*n+400}                    // the host adds this to the round clock
 var PLACEHOLDERS=["lie to me","gloriously wrong","confidently incorrect","wrong, but make it funny","your worst idea","a lie, with style","be brave. be wrong.","trust your gut. ignore it."];
 var OK_STAMPS=["WRONG!","SO WRONG","PERFECTLY WRONG","WRONG ✓","CERTIFIED WRONG"];
 var TAGLINES=["a race to be incorrect, judged by your friends","certified 100% wrong since today","the quiz show your teacher warned you about","being right has never been this embarrassing","where the dumbest answer wins (the funniest one, actually)"];
@@ -423,7 +436,7 @@ function dealNext(i){
   if(!cards.length){L.dealing=false;updateTimer();var f=$("#ans-0");if(f&&matchMedia("(pointer:fine)").matches)f.focus();return}
   cards[0].classList.remove("deal");cards[0].classList.add("dealt");sfx("thwip");
   if(cards.length===1){dealNext(i+1);return} // last card: start the clock right away
-  setTimeout(function(){dealNext(i+1)},CARD_MS);
+  setTimeout(function(){dealNext(i+1)},cardMs(document.querySelectorAll(".pcard").length));
 }
 
 /* tiny synth sound effects (start only after a tap, as browsers require) */
@@ -1065,9 +1078,15 @@ function confetti(){
 
 /* ---- keyboard-smash filter ---- */
 var KB_ROWS=["qwertyuiop","asdfghjkl","zxcvbnm"];
+// real things that are short and vowel-less
+var SHORT_OK=["tv","pc","dj","mc","cd","dvd","bbq","gq","nfl","nhl","nba","mlb","fbi","cia","nsa","nyc","dc","la","uk","ufc","wwf","wwe","gps","mp3","mp4","atm",
+  "bmw","kfc","hbo","cbs","nbc","cnn","bbc","sms","pdf","jpg","gif","png","vr","ar","ac","pr","hr","pm","st","dr","mr","ms","jr","sr","vs","tnt","dna","rv","pj","pjs",
+  "shh","hmm","hm","mm","mmm","psst","brr","grr","tsk","pfft","zzz","nth","pst","ssh","sh","ps","r2","3d","4x4","dnd","xxl","xl","ny","rn","bff","dm","pb","wd"];
 function junkReason(t,forName){
   var s=String(t||"").toLowerCase(),al=s.replace(/[^a-z0-9]/g,"");
   if(!al)return "";                                            // blanks are handled elsewhere
+  if(/^[a-z]$/.test(al))return "single";                       // w (a lone number like 7 is a fine wrong answer)
+  if(!forName&&al.length<=3&&!/^\d+$/.test(al)&&!/[aeiouy]/.test(al)&&SHORT_OK.indexOf(al)<0)return "mash"; // zx, vb, dfg (but TV, BBQ, shh are fine)
   if(/(.)\1{3,}/.test(al))return "repeat";                     // ffffffff, aaaaah
   if(/^(.{1,3})\1{3,}.{0,3}$/.test(al))return "loop";          // lololol, 676767, hahahaha
   if(al.length>=7&&new Set(al.split("")).size/al.length<.3)return "loop";
@@ -1084,8 +1103,8 @@ function junkReason(t,forName){
   if(forName&&/\d{4,}/.test(al))return "numbers";               // names: no long number tails
   return "";
 }
-var CRIMES={repeat:"held one key down",loop:"same letters on loop",mash:"keyboard smash",numbers:"just a pile of numbers"};
-var JUNK_MSG={repeat:"That's one key held down. Not an answer.",loop:"That's the same few letters on loop. Try actual words.",
+var CRIMES={single:"a single letter (bold strategy)",repeat:"held one key down",loop:"same letters on loop",mash:"keyboard smash",numbers:"just a pile of numbers"};
+var JUNK_MSG={single:"One letter isn't an answer. It's a cry for help.",repeat:"That's one key held down. Not an answer.",loop:"That's the same few letters on loop. Try actual words.",
   mash:"That's a keyboard smash, not an answer.",numbers:"That's a long string of numbers, not an answer."};
 
 /* ================= identity ================= */
@@ -1122,7 +1141,7 @@ function closeConn(){if(CONN){CONN.close();CONN=null}connUp=false;clearTimeout(f
 /* ================= HOST ================= */
 function newCode(){var A="ABCDEFGHJKLMNPQRSTUVWXYZ",s="";for(var i=0;i<4;i++)s+=A[rnd(A.length)];return s}
 function startHost(resume){
-  H=resume||{code:newCode(),b:0,game:1,phase:"lobby",round:0,rounds:5,secs:90,letter:"",prompts:[],usedLetters:[],deadline:0,stopAt:0,stoppedBy:"",players:{},answers:{},votes:{}};
+  H=resume||{code:newCode(),b:0,game:1,phase:"lobby",round:0,rounds:5,secs:180,count:12,letter:"",prompts:[],usedLetters:[],deadline:0,stopAt:0,stoppedBy:"",players:{},answers:{},votes:{}};
   // The host isn't in the room until they pick a name (a resumed room already has it).
   var me=H.players[ME.id];if(me&&!me.left)me.seen=Date.now();
   H.nameErr={};
@@ -1160,7 +1179,8 @@ function nameOf(id){return (H.players[id]&&H.players[id].name)||"Someone"}
 
 function scoreRound(g,r){
   var A=H.answers[g+"-"+r]||{},VT=H.votes[g+"-"+r]||{},rows=[],i,pid;
-  for(i=0;i<ANS;i++){
+  var np=0;for(pid in A)np=Math.max(np,(A[pid]||[]).length);
+  for(i=0;i<np;i++){
     var pr=[];
     for(pid in A){
       var text=(A[pid][i]||"").trim();if(!text||junkReason(text))continue; // keyboard smashes don't exist, as far as scoring is concerned
@@ -1191,7 +1211,7 @@ function buildState(forWire){
   var now=Date.now(),A=H.answers[rk()]||{},VT=H.votes[rk()]||{},tot=gameTotals();
   var s={t:"state",code:H.code,b:H.b,host:ME.id,game:H.game,phase:H.phase,round:H.round,rounds:H.rounds,secs:H.secs,letter:H.letter,prompts:H.prompts,
     stoppedBy:H.stoppedBy==="time"?"":nameOf(H.stoppedBy),
-    players:activeIds().map(function(id){return {id:id,name:H.players[id].name,score:tot[id]||0,online:isOn(id),
+    count:H.count||ANS,players:activeIds().map(function(id){return {id:id,name:H.players[id].name,score:tot[id]||0,online:isOn(id),
       filled:(A[id]||[]).filter(realAnswer).length,voted:!!(VT[id]&&VT[id].done)}})};
   if(H.phase==="answer"||H.phase==="vote"){
     if(forWire) s.timeLeft=Math.max(0,H.deadline-now); else s.deadlineLocal=H.deadline;
@@ -1220,8 +1240,8 @@ function startRound(){
   var used=H.round>=1?H.usedLetters:[];
   var pool=LETTERS.filter(function(l){return used.indexOf(l)<0});if(!pool.length)pool=LETTERS;
   var letter=pool[rnd(pool.length)];
-  H.round+=1;H.phase="answer";H.letter=letter;H.prompts=makePrompts(letter);H.usedLetters=used.concat(letter);
-  H.deadline=Date.now()+H.secs*1000+DEAL_MS;H.stopAt=0;H.stoppedBy="";H.answers[rk()]={};H.votes[rk()]={};
+  H.round+=1;H.phase="answer";H.letter=letter;H.prompts=makePrompts(letter,H.count||ANS);H.usedLetters=used.concat(letter);
+  H.deadline=Date.now()+H.secs*1000+dealMs(H.prompts.length);H.stopAt=0;H.stoppedBy="";H.answers[rk()]={};H.votes[rk()]={};
 }
 function hostHandle(d){
   if(!H||!d||typeof d!=="object"||typeof d.id!=="string"||d.id.length>40)return;
@@ -1245,27 +1265,27 @@ function hostHandle(d){
   if(d.t==="ans"){
     if(d.game!==H.game||d.round!==H.round||(H.phase!=="answer"&&H.phase!=="stopping"))return;
     if(!Array.isArray(d.answers))return;
-    (H.answers[rk()]=H.answers[rk()]||{})[id]=d.answers.slice(0,ANS).map(function(a){return str(a,80)});
-    while(H.answers[rk()][id].length<ANS)H.answers[rk()][id].push("");
+    (H.answers[rk()]=H.answers[rk()]||{})[id]=d.answers.slice(0,H.prompts.length).map(function(a){return str(a,80)});
+    while(H.answers[rk()][id].length<H.prompts.length)H.answers[rk()][id].push("");
     push();return;
   }
   if(d.t==="stop"){
     if(d.game!==H.game||d.round!==H.round||H.phase!=="answer")return;
     var a=(H.answers[rk()]||{})[id]||[];
-    if(a.filter(realAnswer).length<ANS)return; // smashes don't count toward a full card
+    if(a.filter(realAnswer).length<H.prompts.length)return; // smashes don't count toward a full card
     H.phase="stopping";H.stopAt=now;H.stoppedBy=id;push();return;
   }
   if(d.t==="vote"){
     if(d.game!==H.game||d.round!==H.round||H.phase!=="vote")return;
     var rej={},fun={},k;
     if(d.reject&&typeof d.reject==="object")for(k in d.reject){if(k.length<60&&d.reject[k]===true)rej[k]=true}
-    if(d.funny&&typeof d.funny==="object")for(k in d.funny){if(/^[0-4]$/.test(k)&&typeof d.funny[k]==="string")fun[k]=d.funny[k].slice(0,40)}
+    if(d.funny&&typeof d.funny==="object")for(k in d.funny){if(/^\d{1,2}$/.test(k)&&+k<H.prompts.length&&typeof d.funny[k]==="string")fun[k]=d.funny[k].slice(0,40)}
     var shame={};if(d.shame&&typeof d.shame==="object")for(k in d.shame){if(/^j[a-z0-9]{1,24}$/.test(k)&&d.shame[k]===true)shame[k]=true}
     (H.votes[rk()]=H.votes[rk()]||{})[id]={reject:rej,funny:fun,shame:shame,done:!!d.done};
     push();return;
   }
   if(!mine)return; // everything below is the host's own controls
-  if(d.t==="settings"){if([3,5,7].indexOf(d.rounds)>=0)H.rounds=d.rounds;if([60,90,120].indexOf(d.secs)>=0)H.secs=d.secs;push();return}
+  if(d.t==="settings"){if([3,5,7].indexOf(d.rounds)>=0)H.rounds=d.rounds;if(SECS_OPTS.indexOf(d.secs)>=0)H.secs=d.secs;if(PROMPT_OPTS.indexOf(d.count)>=0)H.count=d.count;push();return}
   if(d.t==="start"&&(H.phase==="lobby"||H.phase==="results")){startRound();push();return}
   if(d.t==="final"&&H.phase==="results"){H.phase="final";push();return}
   if(d.t==="again"&&H.phase==="final"){H.game+=1;H.round=0;H.phase="lobby";H.letter="";H.prompts=[];H.usedLetters=[];push();return}
@@ -1469,7 +1489,7 @@ function renderHome(){
    '<div class="split">'+
     '<section class="sheet margin stack" aria-label="How it works">'+
      '<h2>How a round works</h2>'+
-     '<p>Everyone gets the same letter and five prompts, dealt one at a time. Fill in all five as wrongly as possible, then slam <b>STOP</b> to end the round for everybody. Then you all judge each other. It gets personal.</p>'+
+     '<p>Everyone gets the same letter and a big stack of prompts (12 by default), dealt one at a time. Fill in every one as wrongly as possible, then slam <b>STOP</b> to end the round for everybody. Then you all judge each other. It gets personal.</p>'+
      '<p class="small">Each prompt has <b>0 to 20 conditions</b>. You won\'t get a reminder of the rule while you answer. No conditions? Name anything <i>except</i> that thing. Got conditions? Name the real thing, but break <i>every single one</i>.</p>'+
      '<div>'+
       '<div class="ex"><div class="ptxt">Name a fruit.</div><span class="rule plain">Plain prompt: anything that isn\'t a fruit.</span>'+
@@ -1520,7 +1540,7 @@ function playersHTML(){
   var s=V;
   return s.players.map(function(p){
     var st="";
-    if(s.phase==="answer"||s.phase==="stopping")st='<span class="st '+(p.filled===ANS?"done":"")+'">'+p.filled+'/'+ANS+'</span>';
+    if(s.phase==="answer"||s.phase==="stopping")st='<span class="st '+(p.filled===(s.prompts||[]).length?"done":"")+'">'+p.filled+'/'+(s.prompts||[]).length+'</span>';
     if(s.phase==="vote")st='<span class="st '+(p.voted?"done":"")+'">'+(p.voted?"voted":"voting")+'</span>';
     return '<li class="chip '+(p.id===ME.id?"me ":"")+(p.online?"":"off")+'"><span class="dot"></span>'+(p.id===s.host?'<span class="crown" title="Host">★</span>':'')+
       '<span class="nm">'+esc(p.name)+(p.id===ME.id?" (you)":"")+'</span><span class="sc">'+p.score+'</span>'+st+'</li>';
@@ -1624,15 +1644,17 @@ function buildLobby(){
        '<p class="notice">This file is open from your computer, so other devices can\'t reach it. Put it on a free host (see the instructions that came with it), then open that web address instead.</p>')+
     '</div></div>'+
     (isHost?'<div class="row"><label for="lrounds">Rounds<select id="lrounds"><option>3</option><option>5</option><option>7</option></select></label>'+
-      '<label for="lsecs">Time per round<select id="lsecs"><option value="60">60 sec</option><option value="90">90 sec</option><option value="120">120 sec</option></select></label></div>'+
+      '<label for="lcount">Prompts per round<select id="lcount">'+PROMPT_OPTS.map(function(n){return '<option value="'+n+'">'+n+'</option>'}).join("")+'</select></label>'+
+      '<label for="lsecs">Time per round<select id="lsecs">'+SECS_OPTS.map(function(t){return '<option value="'+t+'">'+(t<120?t+" sec":t/60+" min")+'</option>'}).join("")+'</select></label></div>'+
       '<div class="row"><button class="primary" id="startBtn" type="button">Let the wrongness begin</button><span class="small muted" id="lobbyNote"></span></div>'
     :'<p class="muted" id="lobbyNote"></p>')+
   '</section>';
   if(online&&typeof QRCode!=="undefined"){try{new QRCode($("#qr"),{text:url,width:150,height:150,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("#qr").hidden=true}}
   else $("#qr").hidden=true;
   if(isHost){
-    $("#lrounds").onchange=function(e){act({t:"settings",rounds:+e.target.value,secs:V.secs})};
-    $("#lsecs").onchange=function(e){act({t:"settings",rounds:V.rounds,secs:+e.target.value})};
+    $("#lrounds").onchange=function(e){act({t:"settings",rounds:+e.target.value,secs:V.secs,count:V.count})};
+    $("#lsecs").onchange=function(e){act({t:"settings",rounds:V.rounds,secs:+e.target.value,count:V.count})};
+    $("#lcount").onchange=function(e){act({t:"settings",rounds:V.rounds,secs:V.secs,count:+e.target.value})};
     $("#startBtn").onclick=function(){act({t:"start"})};
   }
 }
@@ -1641,16 +1663,17 @@ function updateLobby(){
   if(role==="host"){
     if(document.activeElement!==$("#lrounds"))$("#lrounds").value=String(s.rounds);
     if(document.activeElement!==$("#lsecs"))$("#lsecs").value=String(s.secs);
+    if(document.activeElement!==$("#lcount"))$("#lcount").value=String(s.count||ANS);
     note.textContent=n<2?"You can play alone, but judging yourself is just sad. Invite people.":n+" players ready to be wrong.";
   } else {
     var host=s.players.filter(function(p){return p.id===s.host})[0];
-    note.textContent="Waiting for "+(host?host.name:"the host")+" to start ("+s.rounds+" rounds, "+s.secs+" seconds each). Stretch your wrong muscles.";
+    note.textContent="Waiting for "+(host?host.name:"the host")+" to start ("+s.rounds+" rounds, "+(s.count||ANS)+" prompts each, "+(s.secs<120?s.secs+" seconds":s.secs/60+" minutes")+" per round). Stretch your wrong muscles.";
   }
 }
 
 function buildAnswer(){
   var s=V,k=key();
-  if(L.ansKey!==k){L.ansKey=k;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("wao_a_"+s.code+"_"+k)||"null")}catch(e){}L.myAns=Array.isArray(saved)?saved:["","","","",""]}
+  if(L.ansKey!==k){L.ansKey=k;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("wao_a_"+s.code+"_"+k)||"null")}catch(e){}L.myAns=Array.isArray(saved)&&saved.length===s.prompts.length?saved:s.prompts.map(function(){return ""})}
   // Deal the cards one by one, but only at the real start of a round (late joiners and reloads see them all at once).
   var fresh=L.dealtKey!==k&&s.deadlineLocal&&(s.deadlineLocal-Date.now())>s.secs*1000&&!REDUCED;
   L.dealtKey=k;
@@ -1678,10 +1701,10 @@ function updateStop(){
   document.querySelectorAll(".ansin").forEach(function(el){el.disabled=!answering});
   if(!b||!L.myAns)return;
   var filled=L.myAns.every(function(a){return a.trim()})&&answering;
-  b.disabled=!filled;b.title=!filled?"Fill in all five answers first":junkIdx().length?"Some answers are keyboard smashes":dupIdx().length?"Some answers are repeats":"End the round for everyone";
+  b.disabled=!filled;b.title=!filled?"Fill in every answer first":junkIdx().length?"Some answers are keyboard smashes":dupIdx().length?"Some answers are repeats":"End the round for everyone";
 }
 function pressStop(){
-  if(!L.myAns.every(function(a){return a.trim()})){toast("Nice try. Fill in all five before you slam STOP.");return}
+  if(!L.myAns.every(function(a){return a.trim()})){toast("Nice try. Fill in every answer before you slam STOP.");return}
   var jk=junkIdx();if(jk.length){toast("Answer "+(jk[0]+1)+" is a keyboard smash. Real (wrong) words only.");sfx("boing");var je=$("#ans-"+jk[0]);if(je){je.focus();je.select()}return}
   var d=dupIdx();if(d.length){L.dupShownFor="";showDupPop(d[d.length-1]);return}
   clearTimeout(L.ansTimer);L.ansTimer=null;sendAnswers();
