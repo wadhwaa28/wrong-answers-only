@@ -151,7 +151,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 
 /* voting / results */
 .vlist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
-.vlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.vlist li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.vlist li>div:first-child{flex:1 1 150px;min-width:0} /* the answer keeps whole words; buttons drop below when space runs out */
 .vlist li:last-child{border-bottom:0}
 .atext{font-family:var(--hand);font-size:1.55rem;line-height:1.1;color:var(--blue);overflow-wrap:anywhere}
 .atext.out{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
@@ -189,6 +190,18 @@ button:hover:not(:disabled){transform:translateY(-1px) rotate(-1.2deg)}
 .namepick{max-width:560px;width:100%;margin:4vh auto 0}
 .namepick #nick{font-family:var(--hand);font-size:1.7rem;color:var(--blue);padding:4px 10px}
 .nameerr{min-height:1.4em;color:var(--red);font-weight:600;font-size:.92rem}
+.ansnote{color:var(--red);font-weight:600;font-size:.85rem;min-height:0}
+/* the pillory: smashes on public display */
+.pillory{border:2px dashed var(--red);border-radius:6px;padding:6px 12px 8px;background:repeating-linear-gradient(-45deg,transparent 0 10px,var(--red-soft) 10px 20px);transform:rotate(-.6deg)}
+.pillhead{font-family:var(--display);font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.shamed .atext{color:var(--red);font-family:var(--display);font-size:1.4rem;line-height:1.15;letter-spacing:.03em;text-decoration:underline wavy;text-decoration-thickness:2px;text-underline-offset:5px;overflow-wrap:anywhere;padding-bottom:8px}
+.tog.bell{border-color:var(--red);color:var(--red)}
+.tog.bell[aria-pressed="true"]{background:var(--red);color:#fff;animation:ring .5s}
+@keyframes ring{20%{transform:rotate(-14deg)}40%{transform:rotate(11deg)}60%{transform:rotate(-7deg)}80%{transform:rotate(3deg)}}
+.stamp.shame{color:var(--red)}
+.pillory.hall{padding:12px 16px;display:grid;gap:4px;transform:rotate(-1deg)}
+.pillory.hall .atext{color:var(--red);font-family:var(--display);font-size:2.2rem;line-height:1.1;text-decoration:underline wavy;text-decoration-thickness:3px;text-underline-offset:7px;overflow-wrap:anywhere;padding-bottom:10px}
+.ansnote:empty{display:none}
 .pcard{transform:rotate(var(--tilt,0deg))}
 .ptop{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
 .ccount{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);border:1.5px dashed var(--blue);border-radius:999px;padding:1px 8px}
@@ -460,6 +473,7 @@ var SFX={
   thwip:function(){blip(380,.13,"triangle",.16,1500)},
   thunk:function(){blip(160,.16,"sine",.35,55)},
   pop:function(){blip(650,.08,"square",.05,300)},
+  bell:function(){[[1046,.35],[2093,.12],[2794,.08],[3520,.05]].forEach(function(h){blip(h[0],1.6,"sine",h[1])});blip(1046*1.004,1.6,"sine",.18)}, // SHAME. *ding*
   boing:function(){blip(180,.45,"sine",.25,520);blip(520,.3,"sine",.1,180,.18)},
   honk:function(){blip(233,.22,"square",.1);blip(196,.4,"square",.1,0,.2)},
   ding:function(){blip(880,.3,"sine",.14);blip(1318,.45,"sine",.1,0,.12)},
@@ -1049,6 +1063,31 @@ function confetti(){
   })(t0);
 }
 
+/* ---- keyboard-smash filter ---- */
+var KB_ROWS=["qwertyuiop","asdfghjkl","zxcvbnm"];
+function junkReason(t,forName){
+  var s=String(t||"").toLowerCase(),al=s.replace(/[^a-z0-9]/g,"");
+  if(!al)return "";                                            // blanks are handled elsewhere
+  if(/(.)\1{3,}/.test(al))return "repeat";                     // ffffffff, aaaaah
+  if(/^(.{1,3})\1{3,}.{0,3}$/.test(al))return "loop";          // lololol, 676767, hahahaha
+  if(al.length>=7&&new Set(al.split("")).size/al.length<.3)return "loop";
+  if(/(.{3,5})\1\1/.test(al))return "loop";                    // asdfasdfasdf
+  for(var r=0;r<KB_ROWS.length;r++){var row=KB_ROWS[r],rev=row.split("").reverse().join("");
+    for(var i=0;i+5<=row.length;i++)if(al.indexOf(row.substr(i,5))>=0||al.indexOf(rev.substr(i,5))>=0)return "mash"} // asdfg, poiuy
+  var words=s.split(/[^a-z]+/).filter(Boolean);
+  for(var w=0;w<words.length;w++){var wd=words[w];
+    if(wd.length>=4)for(r=0;r<KB_ROWS.length;r++){var rw=KB_ROWS[r];if(rw.indexOf(wd)>=0||rw.split("").reverse().join("").indexOf(wd)>=0)return "mash"} // a whole word like "asdf"
+    if(wd.length>=5&&!/[aeiouy]/.test(wd))return "mash";         // xkcdbvn
+    if(/[bcdfghjklmnpqrstvwxz]{6,}/.test(wd))return "mash";       // dfghtklm
+  }
+  if(/\d{7,}/.test(al))return "numbers";
+  if(forName&&/\d{4,}/.test(al))return "numbers";               // names: no long number tails
+  return "";
+}
+var CRIMES={repeat:"held one key down",loop:"same letters on loop",mash:"keyboard smash",numbers:"just a pile of numbers"};
+var JUNK_MSG={repeat:"That's one key held down. Not an answer.",loop:"That's the same few letters on loop. Try actual words.",
+  mash:"That's a keyboard smash, not an answer.",numbers:"That's a long string of numbers, not an answer."};
+
 /* ================= identity ================= */
 // One id per browser tab (survives reloads of that tab), so two tabs on one device are two players.
 var ME={id:null,name:LS.get("wao_nick")||""};
@@ -1087,6 +1126,7 @@ function startHost(resume){
   // The host isn't in the room until they pick a name (a resumed room already has it).
   var me=H.players[ME.id];if(me&&!me.left)me.seen=Date.now();
   H.nameErr={};
+  if(!H.salt)H.salt=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2); // never leaves the host: keeps shamed answers anonymous
   if(H.phase==="answer"||H.phase==="vote") H.deadline=Math.max(H.deadline,Date.now()+15000); // give everyone time after a host reload
   role="host";L.built="";hostConnect(H.b||0);push();
 }
@@ -1123,7 +1163,7 @@ function scoreRound(g,r){
   for(i=0;i<ANS;i++){
     var pr=[];
     for(pid in A){
-      var text=(A[pid][i]||"").trim();if(!text)continue;
+      var text=(A[pid][i]||"").trim();if(!text||junkReason(text))continue; // keyboard smashes don't exist, as far as scoring is concerned
       var voters=Object.keys(VT).filter(function(v){return v!==pid});
       var rejects=voters.filter(function(v){return VT[v].reject&&VT[v].reject[pid+"|"+i]}).length;
       var funny=voters.filter(function(v){return VT[v].funny&&VT[v].funny[i]===pid}).length;
@@ -1152,19 +1192,27 @@ function buildState(forWire){
   var s={t:"state",code:H.code,b:H.b,host:ME.id,game:H.game,phase:H.phase,round:H.round,rounds:H.rounds,secs:H.secs,letter:H.letter,prompts:H.prompts,
     stoppedBy:H.stoppedBy==="time"?"":nameOf(H.stoppedBy),
     players:activeIds().map(function(id){return {id:id,name:H.players[id].name,score:tot[id]||0,online:isOn(id),
-      filled:(A[id]||[]).filter(function(x){return x&&x.trim()}).length,voted:!!(VT[id]&&VT[id].done)}})};
+      filled:(A[id]||[]).filter(realAnswer).length,voted:!!(VT[id]&&VT[id].done)}})};
   if(H.phase==="answer"||H.phase==="vote"){
     if(forWire) s.timeLeft=Math.max(0,H.deadline-now); else s.deadlineLocal=H.deadline;
   }
   if(H.phase==="stopping")s.stopAge=now-H.stopAt; // devices that arrive very late skip the trailer
   var errs={};for(var eid in H.nameErr){if(now-H.nameErr[eid].at<10000)errs[eid]={why:H.nameErr[eid].why,nonce:H.nameErr[eid].nonce}}
   s.nameErr=errs;
-  if(H.phase==="vote") s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return (A[pid][i]||"").trim()}).map(function(pid){return {pid:pid,text:A[pid][i].trim()}})});
-  if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals}}
+  if(H.phase==="vote"){
+    s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return realAnswer(A[pid][i])}).map(function(pid){return {pid:pid,text:A[pid][i].trim()}})});
+    var sh=shameRound(H.game,H.round);
+    s.junk=H.prompts.map(function(p,i){return sh.filter(function(x){return x.i===i}).map(function(x){return {key:x.key,text:x.text,why:x.why}})});
+  }
+  if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals,
+    shame:shameRound(H.game,H.round).map(function(x){return {i:x.i,text:x.text,why:x.why,count:x.count}})}} // no key, no pid: just the crime
   if(H.phase==="final"){
     var best=null;
     for(var k=1;k<=H.round;k++) scoreRound(H.game,k).rows.forEach(function(x){if(!x.out&&x.funny>0&&(!best||x.funny>best.funny))best={text:x.text,name:nameOf(x.pid),funny:x.funny,round:k}});
     s.best=best;
+    var worst=null; // the Hall of Shame: the most-shamed smash of the game, still anonymous
+    for(var k2=1;k2<=H.round;k2++) shameRound(H.game,k2).forEach(function(x){if(!worst||x.count>worst.count)worst={text:x.text,why:x.why,count:x.count,round:k2}});
+    s.worst=worst;
   }
   return s;
 }
@@ -1182,7 +1230,7 @@ function hostHandle(d){
   if(d.t==="hello"){
     var nm=cleanName(d.name),nonce=str(d.nonce,24),inRoom=p&&!p.left;
     if(!inRoom){ // joining (or coming back after leaving): the name must be usable and free
-      var why=!nameKey(nm)?"empty":nameTaken(nm,id)?"taken":"";
+      var why=!nameKey(nm)?"empty":junkReason(nm,true)?"junk":nameTaken(nm,id)?"taken":"";
       if(why){H.nameErr[id]={why:why,nonce:nonce,at:now};push();return}
       delete H.nameErr[id];
       H.players[id]={name:nm,joined:p?p.joined:now,seen:now,left:false};push();return;
@@ -1204,7 +1252,7 @@ function hostHandle(d){
   if(d.t==="stop"){
     if(d.game!==H.game||d.round!==H.round||H.phase!=="answer")return;
     var a=(H.answers[rk()]||{})[id]||[];
-    if(a.filter(function(x){return x&&x.trim()}).length<ANS)return;
+    if(a.filter(realAnswer).length<ANS)return; // smashes don't count toward a full card
     H.phase="stopping";H.stopAt=now;H.stoppedBy=id;push();return;
   }
   if(d.t==="vote"){
@@ -1212,7 +1260,8 @@ function hostHandle(d){
     var rej={},fun={},k;
     if(d.reject&&typeof d.reject==="object")for(k in d.reject){if(k.length<60&&d.reject[k]===true)rej[k]=true}
     if(d.funny&&typeof d.funny==="object")for(k in d.funny){if(/^[0-4]$/.test(k)&&typeof d.funny[k]==="string")fun[k]=d.funny[k].slice(0,40)}
-    (H.votes[rk()]=H.votes[rk()]||{})[id]={reject:rej,funny:fun,done:!!d.done};
+    var shame={};if(d.shame&&typeof d.shame==="object")for(k in d.shame){if(/^j[a-z0-9]{1,24}$/.test(k)&&d.shame[k]===true)shame[k]=true}
+    (H.votes[rk()]=H.votes[rk()]||{})[id]={reject:rej,funny:fun,shame:shame,done:!!d.done};
     push();return;
   }
   if(!mine)return; // everything below is the host's own controls
@@ -1221,6 +1270,17 @@ function hostHandle(d){
   if(d.t==="final"&&H.phase==="results"){H.phase="final";push();return}
   if(d.t==="again"&&H.phase==="final"){H.game+=1;H.round=0;H.phase="lobby";H.letter="";H.prompts=[];H.usedLetters=[];push();return}
   if(d.t==="reveal"&&H.phase==="vote"){H.phase="results";push();return}
+}
+function realAnswer(x){return !!(x&&x.trim()&&!junkReason(x))}
+/* ---- the pillory: smashes are shown and shamed, but never tied to a person ---- */
+function jkey(pid,g,r,i){return "j"+hash(H.salt+"|"+pid+"|"+g+"|"+r+"|"+i).toString(36)+hash(pid+H.salt+i).toString(36).slice(0,3)}
+function shameRound(g,r){ // [{i,key,text,why,count}] for every smash this round, with no player attached
+  var A=H.answers[g+"-"+r]||{},VT=H.votes[g+"-"+r]||{},out=[];
+  Object.keys(A).forEach(function(pid){(A[pid]||[]).forEach(function(t,i){
+    var why=t&&t.trim()?junkReason(t):"";if(!why)return;var k=jkey(pid,g,r,i);
+    out.push({i:i,key:k,text:t.trim(),why:why,count:Object.keys(VT).filter(function(v){return VT[v].shame&&VT[v].shame[k]}).length});
+  })});
+  return out.sort(function(a,b){return a.key<b.key?-1:1});
 }
 /* names: "Ana", "ana" and "A.N.A." are the same name */
 function nameKey(n){return cleanName(n).toLowerCase().replace(/[^a-z0-9]/g,"")}
@@ -1293,7 +1353,7 @@ function act(msg){
 }
 function key(){return V.game+"-"+V.round}
 function sendAnswers(){if(V&&L.myAns)act({t:"ans",game:V.game,round:V.round,answers:L.myAns.slice()})}
-function sendVote(){if(V&&L.myVote)act({t:"vote",game:V.game,round:V.round,reject:L.myVote.reject,funny:L.myVote.funny,done:L.myVote.done})}
+function sendVote(){if(V&&L.myVote)act({t:"vote",game:V.game,round:V.round,reject:L.myVote.reject,funny:L.myVote.funny,shame:L.myVote.shame||{},done:L.myVote.done})}
 
 /* heartbeat */
 var beat=0;
@@ -1314,7 +1374,15 @@ function dupIdx(){
   (L.myAns||[]).forEach(function(a,i){var n=normAns(a);if(!n)return;if(seen.hasOwnProperty(n)){out[i]=1;out[seen[n]]=1}else seen[n]=i});
   return Object.keys(out).map(Number);
 }
-function markDupes(){var d=dupIdx();document.querySelectorAll(".ansin").forEach(function(el,i){el.classList.toggle("dup",d.indexOf(i)>=0)})}
+function junkIdx(){var out=[];(L.myAns||[]).forEach(function(a,i){if(junkReason(a))out.push(i)});return out}
+function markDupes(){ // repeats and keyboard smashes both get a red underline; smashes also get a note
+  var d=dupIdx();
+  document.querySelectorAll(".ansin").forEach(function(el,i){
+    var jr=junkReason(L.myAns&&L.myAns[i]),note=$("#note-"+i);
+    el.classList.toggle("dup",d.indexOf(i)>=0||!!jr);
+    if(note)note.textContent=jr?JUNK_MSG[jr]:"";
+  });
+}
 function showDupPop(i){
   var pop=$("#dupPop");if(!pop.hidden)return;
   $("#dupWord").textContent="“"+L.myAns[i].trim()+"”";pop.hidden=false;L.dupShownFor=normAns(L.myAns[i]);sfx("boing");
@@ -1361,6 +1429,7 @@ function renderNamePick(){
       e.preventDefault();
       var nm=cleanName(input.value);
       if(!nameKey(nm)){L.nameErr="empty";updateNamePick();input.focus();return}
+      if(junkReason(nm,true)){L.nameErr="junk";updateNamePick();sfx("boing");input.focus();input.select();return}
       if(localTaken(nm)){L.nameErr="taken";updateNamePick();sfx("boing");input.focus();input.select();return}
       LS.set("wao_nick",nm);ME.name=nm;L.nameErr="";L.joining=true;L.nonce=Math.random().toString(36).slice(2,10);
       updateNamePick();
@@ -1379,7 +1448,9 @@ function updateNamePick(){
   var cur=cleanName($("#nick").value);
   var msg=L.nameErr==="taken"?"“"+(cur||"That name")+"” is already taken in this room. Be original. It's the one rule we have.":
           L.nameErr==="empty"?"You need a name with at least one letter or number. Even a wrong one. Try the dice.":
-          (cur&&localTaken(cur)?"Someone here is already “"+cur+"”. Pick something else.":"");
+          L.nameErr==="junk"?"Names can't be a keyboard smash or a long string of numbers. Try the dice.":
+          (cur&&junkReason(cur,true)?"That looks like a keyboard smash or a long number. Try a real-ish name.":
+           cur&&localTaken(cur)?"Someone here is already “"+cur+"”. Pick something else.":"");
   err.textContent=msg;
   $("#nameGo").disabled=!!L.joining;$("#nameGo").textContent=L.joining?"Checking with the host…":"Enter the room";
   $("#takenLabel").textContent=names.length?"Already taken ("+names.length+")":"Nobody's here yet. Every name is yours for the taking.";
@@ -1486,7 +1557,7 @@ function renderRoom(){
     if(L.bodyKey!=="lobby-"+s.game){L.bodyKey="lobby-"+s.game;buildLobby()}
     updateLobby();
   } else {
-    var sig=phase+key()+JSON.stringify(phase==="vote"?s.answers:phase==="results"?[s.results,s.players]:[s.best,s.players]);
+    var sig=phase+key()+JSON.stringify(phase==="vote"?[s.answers,s.junk]:phase==="results"?[s.results,s.players]:[s.best,s.worst,s.players]);
     if(L.bodySig!==sig){L.bodySig=sig;L.bodyKey=phase;if(phase==="vote")buildVote();else if(phase==="results")buildResults();else buildFinal()}
   }
 
@@ -1585,7 +1656,7 @@ function buildAnswer(){
   L.dealtKey=k;
   var holders=shuffle(PLACEHOLDERS.slice());
   $("#body").innerHTML='<div class="prompts">'+s.prompts.map(function(p,i){
-    return promptHTML(p,i,'<input type="text" class="ansin" id="ans-'+i+'" maxlength="80" autocomplete="off" autocapitalize="off" placeholder="'+esc(holders[i])+'" value="'+esc(L.myAns[i])+'" aria-label="Answer '+(i+1)+'">',fresh?"deal":"",true);
+    return promptHTML(p,i,'<input type="text" class="ansin" id="ans-'+i+'" maxlength="80" autocomplete="off" autocapitalize="off" placeholder="'+esc(holders[i])+'" value="'+esc(L.myAns[i])+'" aria-label="Answer '+(i+1)+'" aria-describedby="note-'+i+'"><div class="ansnote" id="note-'+i+'" aria-live="polite"></div>',fresh?"deal":"",true);
   }).join("")+'</div>';
   if(fresh)rollThenDeal(s.letter);
   markDupes();
@@ -1607,10 +1678,11 @@ function updateStop(){
   document.querySelectorAll(".ansin").forEach(function(el){el.disabled=!answering});
   if(!b||!L.myAns)return;
   var filled=L.myAns.every(function(a){return a.trim()})&&answering;
-  b.disabled=!filled;b.title=!filled?"Fill in all five answers first":dupIdx().length?"Some answers are repeats":"End the round for everyone";
+  b.disabled=!filled;b.title=!filled?"Fill in all five answers first":junkIdx().length?"Some answers are keyboard smashes":dupIdx().length?"Some answers are repeats":"End the round for everyone";
 }
 function pressStop(){
   if(!L.myAns.every(function(a){return a.trim()})){toast("Nice try. Fill in all five before you slam STOP.");return}
+  var jk=junkIdx();if(jk.length){toast("Answer "+(jk[0]+1)+" is a keyboard smash. Real (wrong) words only.");sfx("boing");var je=$("#ans-"+jk[0]);if(je){je.focus();je.select()}return}
   var d=dupIdx();if(d.length){L.dupShownFor="";showDupPop(d[d.length-1]);return}
   clearTimeout(L.ansTimer);L.ansTimer=null;sendAnswers();
   act({t:"stop",game:V.game,round:V.round});
@@ -1618,7 +1690,7 @@ function pressStop(){
 
 function buildVote(){
   var s=V,k=key();
-  if(L.voteKey!==k){L.voteKey=k;L.myVote={reject:{},funny:{},done:false}}
+  if(L.voteKey!==k){L.voteKey=k;L.myVote={reject:{},funny:{},shame:{},done:false}}
   var html=s.prompts.map(function(p,i){
     var list=(s.answers[i]||[]).slice().sort(function(a,b){return hash(a.pid+k+i)-hash(b.pid+k+i)});
     var items=list.map(function(a){
@@ -1627,11 +1699,23 @@ function buildVote(){
         (mine?'':'<div class="vctl"><button type="button" class="tog '+(bad?"bad":"okay")+'" data-rej="'+esc(kk)+'" aria-pressed="'+bad+'">'+(bad?"✗ Busted":"✓ Legit wrong")+'</button>'+
         '<button type="button" class="tog star" data-star="'+i+'" data-pid="'+esc(a.pid)+'" aria-pressed="'+star+'">★ Funniest</button></div>')+'</li>';
     }).join("");
-    return promptHTML(p,i,items?'<ul class="vlist">'+items+'</ul>':'<p class="empty">Nobody answered this one. Cowards.</p>');
+    var junk=(s.junk&&s.junk[i])||[];
+    var pill=junk.length?'<div class="pillory"><div class="pillhead">Publicly shamed</div><ul class="vlist">'+junk.map(function(j){
+      var on=!!L.myVote.shame[j.key],mine=L.myAns&&normAns(L.myAns[i])===normAns(j.text)&&L.ansKey===k;
+      return '<li class="shamed"><div><div class="atext">'+esc(j.text)+'</div><div class="who">Crime: '+esc(CRIMES[j.why]||"keyboard smash")+(mine?' · this one\'s yours (only you can see that)':'')+'</div></div>'+
+        '<div class="vctl"><button type="button" class="tog bell" data-shame="'+esc(j.key)+'" aria-pressed="'+on+'">🔔 '+(on?"Shamed!":"Shame")+'</button></div></li>';
+    }).join("")+'</ul></div>':'';
+    return promptHTML(p,i,(items?'<ul class="vlist">'+items+'</ul>':'<p class="empty">Nobody answered this one. Cowards.</p>')+pill);
   }).join("");
-  $("#body").innerHTML='<div class="stack"><section class="sheet pad"><h2>Judge your friends. Harshly.</h2><p class="muted">Bust anyone who didn\'t follow the rule, and crown the funniest answer on each prompt. Names stay secret until the scores drop, so no revenge voting. Probably.</p></section><div class="prompts">'+html+'</div></div>';
+  var anyJunk=(s.junk||[]).some(function(l){return l&&l.length});
+  $("#body").innerHTML='<div class="stack"><section class="sheet pad"><h2>Judge your friends. Harshly.</h2><p class="muted">Bust anyone who didn\'t follow the rule, and crown the funniest answer on each prompt. Names stay secret until the scores drop, so no revenge voting. Probably.</p>'+
+    (anyJunk?'<p class="small" style="margin-top:6px"><b>Keyboard smashes</b> can\'t score, but they don\'t get off that easy. Ring the bell to shame them. Nobody will ever know who typed them. Not even the scoreboard.</p>':'')+
+    '</section><div class="prompts">'+html+'</div></div>';
   function changed(){sfx("pop");clearTimeout(L.voteTimer);L.voteTimer=setTimeout(sendVote,300);buildVote()}
   $("#body").querySelectorAll("[data-rej]").forEach(function(b){b.onclick=function(){var x=b.dataset.rej;if(L.myVote.reject[x])delete L.myVote.reject[x];else L.myVote.reject[x]=true;changed()}});
+  $("#body").querySelectorAll("[data-shame]").forEach(function(b){b.onclick=function(){var x=b.dataset.shame;
+    if(L.myVote.shame[x])delete L.myVote.shame[x];else{L.myVote.shame[x]=true;sfx("bell")}
+    clearTimeout(L.voteTimer);L.voteTimer=setTimeout(sendVote,300);buildVote()}});
   $("#body").querySelectorAll("[data-star]").forEach(function(b){b.onclick=function(){var i=b.dataset.star;if(L.myVote.funny[i]===b.dataset.pid)delete L.myVote.funny[i];else L.myVote.funny[i]=b.dataset.pid;changed()}});
 }
 
@@ -1639,14 +1723,24 @@ function boardHTML(){
   var ps=V.players.slice().sort(function(a,b){return b.score-a.score}),place=0,prev=null;
   return '<ol class="board">'+ps.map(function(p,i){if(p.score!==prev){place=i+1;prev=p.score}return '<li class="'+(place===1?"first":"")+'"><span class="place">'+place+'</span><span class="nm">'+esc(p.name)+(p.id===ME.id?" (you)":"")+'</span><span class="sc">'+p.score+'</span></li>'}).join("")+'</ol>';
 }
+function shameLine(n){return n?("🔔 Shamed by "+n+(n===1?" person":" people")):"Somehow escaped shame"}
+function shameHTML(list,i,delay){ // smashes in results: the crime and the verdict, never the person
+  var mine=(list||[]).filter(function(x){return x.i===i}).sort(function(a,b){return b.count-a.count});
+  if(!mine.length)return "";
+  return '<div class="pillory"><div class="pillhead">Publicly shamed</div><ul class="vlist">'+mine.map(function(x){
+    return '<li class="shamed"><div><div class="atext">'+esc(x.text)+'</div><div class="who">Author: unknown · Crime: '+esc(CRIMES[x.why]||"keyboard smash")+'</div></div>'+
+      '<div class="vctl"><span class="stamp shame" style="--d:'+delay+'ms">'+(x.count?"SHAMED ×"+x.count:"UNSHAMED")+'</span><span class="pts">+0</span></div></li>';
+  }).join("")+'</ul></div>';
+}
 function buildResults(){
   var s=V,R=s.results||{rows:[],totals:{}},isHost=role==="host",last=s.round>=s.rounds;
   var fresh=L.animKey!=="res"+key();L.animKey="res"+key();var d=0;
+  function dl0(){return (d++)*110}
   var sec=s.prompts.map(function(p,i){
     var pr=R.rows.filter(function(x){return x.i===i}).sort(function(a,b){return b.pts-a.pts});
     return promptHTML(p,i,
       (pr.length?'<ul class="vlist">'+pr.map(function(x){var dl='style="--d:'+((d++)*110)+'ms"';return '<li><div><div class="atext '+(x.out?"out":"")+'">'+esc(x.text)+'</div><div class="who">'+esc(x.name)+(x.funny?" · "+x.funny+" funny vote"+(x.funny>1?"s":""):"")+'</div></div>'+
-        '<div class="vctl">'+(x.top?'<span class="stamp top" '+dl+'>COMEDY GOLD</span>':'')+(x.out?'<span class="stamp out" '+dl+'>BUSTED</span>':'<span class="stamp ok" '+dl+'>'+OK_STAMPS[hash(x.pid+x.i+key())%OK_STAMPS.length]+'</span>')+'<span class="pts">+'+x.pts+'</span></div></li>'}).join("")+'</ul>':'<p class="empty">No answers. Suspicious.</p>'),
+        '<div class="vctl">'+(x.top?'<span class="stamp top" '+dl+'>COMEDY GOLD</span>':'')+(x.out?'<span class="stamp out" '+dl+'>BUSTED</span>':'<span class="stamp ok" '+dl+'>'+OK_STAMPS[hash(x.pid+x.i+key())%OK_STAMPS.length]+'</span>')+'<span class="pts">+'+x.pts+'</span></div></li>'}).join("")+'</ul>':'<p class="empty">No answers. Suspicious.</p>')+shameHTML(R.shame,i,dl0()),
       fresh?"stamping":"");
   }).join("");
   if(fresh){sfx("ding");setTimeout(function(){sfx("thunk")},350)}
@@ -1667,6 +1761,9 @@ function buildFinal(){
     '<div class="row">'+(isHost?'<button class="primary" id="againBtn" type="button">Run it back</button>':'<span class="muted small">'+esc(host?host.name:"The host")+' can start another game.</span>')+'</div></section>'+
     '<section class="sheet pad stack"><h2>Funniest answer of the game</h2>'+
     (b?'<div class="best"><div class="atext">'+esc(b.text)+'</div><div class="who">'+esc(b.name)+' · round '+b.round+' · '+b.funny+' funny vote'+(b.funny>1?"s":"")+'</div></div>':'<p class="empty">No funny votes this game. Tough crowd.</p>')+
+    (s.worst?'<h2>Hall of Shame</h2><div class="pillory hall"><div class="atext">'+esc(s.worst.text)+'</div>'+
+      '<div class="who">Round '+s.worst.round+' · Crime: '+esc(CRIMES[s.worst.why]||"keyboard smash")+' · '+esc(shameLine(s.worst.count))+'</div>'+
+      '<div class="who">Author: unknown, and we\'d like to keep it that way.</div></div>':'')+
     '</section></div>';
   if(L.animKey!=="final"+s.game){L.animKey="final"+s.game;sfx("fanfare");confetti()}
   if(isHost)$("#againBtn").onclick=function(){act({t:"again"})};
