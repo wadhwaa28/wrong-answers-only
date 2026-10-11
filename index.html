@@ -186,6 +186,9 @@ button:hover:not(:disabled){transform:translateY(-1px) rotate(-1.2deg)}
 .hero{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .dice{padding:0 10px;font-size:1.1rem;flex:none}
 .nickrow{display:flex;gap:8px}
+.namepick{max-width:560px;width:100%;margin:4vh auto 0}
+.namepick #nick{font-family:var(--hand);font-size:1.7rem;color:var(--blue);padding:4px 10px}
+.nameerr{min-height:1.4em;color:var(--red);font-weight:600;font-size:.92rem}
 .pcard{transform:rotate(var(--tilt,0deg))}
 .ptop{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
 .ccount{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);border:1.5px dashed var(--blue);border-radius:999px;padding:1px 8px}
@@ -1081,8 +1084,9 @@ function closeConn(){if(CONN){CONN.close();CONN=null}connUp=false;clearTimeout(f
 function newCode(){var A="ABCDEFGHJKLMNPQRSTUVWXYZ",s="";for(var i=0;i<4;i++)s+=A[rnd(A.length)];return s}
 function startHost(resume){
   H=resume||{code:newCode(),b:0,game:1,phase:"lobby",round:0,rounds:5,secs:90,letter:"",prompts:[],usedLetters:[],deadline:0,stopAt:0,stoppedBy:"",players:{},answers:{},votes:{}};
-  var me=H.players[ME.id];
-  H.players[ME.id]={name:ME.name,joined:me?me.joined:Date.now(),seen:Date.now(),left:false};
+  // The host isn't in the room until they pick a name (a resumed room already has it).
+  var me=H.players[ME.id];if(me&&!me.left)me.seen=Date.now();
+  H.nameErr={};
   if(H.phase==="answer"||H.phase==="vote") H.deadline=Math.max(H.deadline,Date.now()+15000); // give everyone time after a host reload
   role="host";L.built="";hostConnect(H.b||0);push();
 }
@@ -1153,6 +1157,8 @@ function buildState(forWire){
     if(forWire) s.timeLeft=Math.max(0,H.deadline-now); else s.deadlineLocal=H.deadline;
   }
   if(H.phase==="stopping")s.stopAge=now-H.stopAt; // devices that arrive very late skip the trailer
+  var errs={};for(var eid in H.nameErr){if(now-H.nameErr[eid].at<10000)errs[eid]={why:H.nameErr[eid].why,nonce:H.nameErr[eid].nonce}}
+  s.nameErr=errs;
   if(H.phase==="vote") s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return (A[pid][i]||"").trim()}).map(function(pid){return {pid:pid,text:A[pid][i].trim()}})});
   if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals}}
   if(H.phase==="final"){
@@ -1172,11 +1178,16 @@ function startRound(){
 function hostHandle(d){
   if(!H||!d||typeof d!=="object"||typeof d.id!=="string"||d.id.length>40)return;
   var id=d.id,p=H.players[id],now=Date.now(),mine=id===ME.id;
+  if(d.t==="peek"){push();return} // someone connected and is picking a name: send them the room right away
   if(d.t==="hello"){
-    var nm=cleanName(d.name)||"Mystery guest";
-    if(!p){H.players[id]={name:nm,joined:now,seen:now,left:false};push();return}
-    var changed=p.left||p.name!==nm||!isOn(id);
-    p.name=nm;p.seen=now;p.left=false;
+    var nm=cleanName(d.name),nonce=str(d.nonce,24),inRoom=p&&!p.left;
+    if(!inRoom){ // joining (or coming back after leaving): the name must be usable and free
+      var why=!nameKey(nm)?"empty":nameTaken(nm,id)?"taken":"";
+      if(why){H.nameErr[id]={why:why,nonce:nonce,at:now};push();return}
+      delete H.nameErr[id];
+      H.players[id]={name:nm,joined:p?p.joined:now,seen:now,left:false};push();return;
+    }
+    var changed=!isOn(id);p.seen=now;   // heartbeat from someone already here; names don't change mid-room
     if(changed||d.need)push();
     return;
   }
@@ -1211,9 +1222,15 @@ function hostHandle(d){
   if(d.t==="again"&&H.phase==="final"){H.game+=1;H.round=0;H.phase="lobby";H.letter="";H.prompts=[];H.usedLetters=[];push();return}
   if(d.t==="reveal"&&H.phase==="vote"){H.phase="results";push();return}
 }
+/* names: "Ana", "ana" and "A.N.A." are the same name */
+function nameKey(n){return cleanName(n).toLowerCase().replace(/[^a-z0-9]/g,"")}
+function nameTaken(nm,exceptId){
+  var k=nameKey(nm);
+  return Object.keys(H.players).some(function(o){return o!==exceptId&&!H.players[o].left&&nameKey(H.players[o].name)===k});
+}
 function hostTick(){
   if(role!=="host"||!H)return;
-  var now=Date.now();H.players[ME.id].seen=now;
+  var now=Date.now();if(H.players[ME.id])H.players[ME.id].seen=now;
   if(H.phase==="answer"&&now>H.deadline){H.phase="stopping";H.stopAt=now;H.stoppedBy="time";push()}
   else if(H.phase==="stopping"&&now>H.stopAt+STOP_PAUSE){H.phase="vote";H.deadline=now+VOTE_SECS*1000;push()}
   else if(H.phase==="vote"&&(now>H.deadline||allVoted())){H.phase="results";push()}
@@ -1227,7 +1244,8 @@ function endRoom(){
 /* ================= PLAYER ================= */
 function pTopic(){return TOPIC+pCode}
 function joinGame(code){
-  role="player";pCode=code;V=null;L.built="";tries=0;
+  role="player";pCode=code;V=null;L.built="";tries=0;L.joined=false;L.joining=false;L.nameErr="";
+  try{sessionStorage.setItem("wao_inroom",code)}catch(e){} // a reload of this tab drops you straight back in
   pB=(bParam>=0&&bParam<BROKERS.length&&code===roomParam)?bParam:0;
   playerConnect(pB);render();
 }
@@ -1241,7 +1259,8 @@ function playerConnect(idx){
   CONN=connectBroker(idx,{
     onUp:function(c){
       c.subscribe(pTopic()+"/state",{qos:0});connUp=true;
-      sendIn({t:"hello",id:ME.id,name:ME.name,need:true});
+      if(L.joined)sendIn({t:"hello",id:ME.id,name:ME.name,need:true}); // reconnecting: say hi again
+      else sendIn({t:"peek",id:ME.id});                                 // just looking: show me the room
       clearTimeout(findTimer);
       findTimer=setTimeout(function(){if(!lastState){tries++;playerConnect((idx+1)%BROKERS.length)}},6000);
       render();
@@ -1252,12 +1271,17 @@ function playerConnect(idx){
       if(packet&&packet.retain)return;
       if(topic!==pTopic()+"/state"||!d||d.t!=="state"||d.code!==pCode)return;
       if(typeof d.timeLeft==="number")d.deadlineLocal=Date.now()+d.timeLeft;
-      V=d;lastState=Date.now();tries=0;render();
+      V=d;lastState=Date.now();tries=0;
+      var me=(d.players||[]).filter(function(p){return p.id===ME.id})[0];
+      if(me){L.joined=true;L.joining=false;ME.name=me.name}                       // the host let us in (or we were already in)
+      else if(L.joining&&d.nameErr&&d.nameErr[ME.id]&&d.nameErr[ME.id].nonce===L.nonce){L.joining=false;L.nameErr=d.nameErr[ME.id].why}
+      render();
     }
   });
 }
 function leaveGame(){
   act({t:"leave"});
+  try{sessionStorage.removeItem("wao_inroom")}catch(e){}
   setTimeout(function(){closeConn();role=null;V=null;L.built="";history.replaceState(null,"",location.pathname);roomParam="";render()},250);
 }
 
@@ -1276,7 +1300,8 @@ var beat=0;
 setInterval(function(){
   if(role==="host"){hostTick();return}
   if(role==="player"&&CONN){
-    if(++beat%20===0) sendIn({t:"hello",id:ME.id,name:ME.name}); // every 5 s
+    if(++beat%20===0&&L.joined) sendIn({t:"hello",id:ME.id,name:ME.name}); // every 5 s, once in the room
+    if(L.joining&&beat%10===0) sendIn({t:"hello",id:ME.id,name:ME.name,nonce:L.nonce,need:true}); // resend a join that may have been lost
     if(lastState&&Date.now()-lastState>22000)playerConnect((pB+1)%BROKERS.length);
   }
 },250);
@@ -1303,7 +1328,62 @@ function render(){
   if(!role||!V||V.phase==="closed")killCinema();
   if(!role) return renderHome();
   if(!V||V.phase==="closed") return renderWaiting();
+  if(!inRoom()) return renderNamePick(); // connected, but nobody can see you until you have a name
   renderRoom();
+}
+function inRoom(){return (V.players||[]).some(function(p){return p.id===ME.id})}
+
+/* ---- the name picker: shown after joining, before you appear in the room ---- */
+function takenNames(){return (V.players||[]).map(function(p){return p.name})}
+function localTaken(nm){var k=nameKey(nm);return takenNames().some(function(t){return nameKey(t)===k})}
+function renderNamePick(){
+  var key="name-"+V.code;
+  if(L.built!==key){
+    L.built=key;
+    $("#app").innerHTML='<section class="sheet margin stack namepick">'+
+      '<div class="meta">Room</div><div class="bigcode">'+esc(V.code)+'</div>'+
+      '<h2>Who are you, wrong-doer?</h2>'+
+      '<p class="muted">Pick a name nobody in this room is using. You\'ll pop into the room once it\'s yours.</p>'+
+      '<form class="nickrow" id="nameForm" autocomplete="off"><input type="text" id="nick" maxlength="18" autocomplete="off" aria-label="Your name" placeholder="e.g. '+esc(pick(SILLY_NAMES))+'" value="'+esc(cleanName(LS.get("wao_nick")||""))+'">'+
+        '<button class="ghost dice" id="diceBtn" type="button" title="Give me a silly name nobody has" aria-label="Random silly name">🎲</button></form>'+
+      '<p class="nameerr" id="nameErr" role="alert"></p>'+
+      '<div class="row"><button class="primary" id="nameGo" type="submit" form="nameForm">Enter the room</button><button class="ghost" id="nameBack" type="button">Back</button></div>'+
+      '<div class="stack" style="gap:6px"><div class="meta" id="takenLabel"></div><ul class="players" id="takenList"></ul></div>'+
+    '</section>';
+    var input=$("#nick");
+    input.addEventListener("input",function(){L.nameErr="";updateNamePick()});
+    $("#diceBtn").onclick=function(){
+      var free=SILLY_NAMES.filter(function(n){return !localTaken(n)}),n=free.length?pick(free):pick(SILLY_NAMES)+" "+(2+rnd(97));
+      input.value=n;L.nameErr="";sfx("pop");updateNamePick();
+    };
+    $("#nameBack").onclick=function(){if(role==="host")endRoom();else{try{sessionStorage.removeItem("wao_inroom")}catch(x){}closeConn();role=null;V=null;L.built="";render()}};
+    $("#nameForm").addEventListener("submit",function(e){
+      e.preventDefault();
+      var nm=cleanName(input.value);
+      if(!nameKey(nm)){L.nameErr="empty";updateNamePick();input.focus();return}
+      if(localTaken(nm)){L.nameErr="taken";updateNamePick();sfx("boing");input.focus();input.select();return}
+      LS.set("wao_nick",nm);ME.name=nm;L.nameErr="";L.joining=true;L.nonce=Math.random().toString(36).slice(2,10);
+      updateNamePick();
+      act({t:"hello",name:nm,nonce:L.nonce,need:true});
+      if(role==="host"){ // the host referees itself instantly
+        var e2=H.nameErr[ME.id];L.joining=false;
+        if(e2&&e2.nonce===L.nonce){L.nameErr=e2.why;delete H.nameErr[ME.id];updateNamePick()}
+      }
+    });
+    setTimeout(function(){input.focus()},30);
+  }
+  updateNamePick();
+}
+function updateNamePick(){
+  var names=takenNames(),err=$("#nameErr");if(!err)return;
+  var cur=cleanName($("#nick").value);
+  var msg=L.nameErr==="taken"?"“"+(cur||"That name")+"” is already taken in this room. Be original. It's the one rule we have.":
+          L.nameErr==="empty"?"You need a name with at least one letter or number. Even a wrong one. Try the dice.":
+          (cur&&localTaken(cur)?"Someone here is already “"+cur+"”. Pick something else.":"");
+  err.textContent=msg;
+  $("#nameGo").disabled=!!L.joining;$("#nameGo").textContent=L.joining?"Checking with the host…":"Enter the room";
+  $("#takenLabel").textContent=names.length?"Already taken ("+names.length+")":"Nobody's here yet. Every name is yours for the taking.";
+  $("#takenList").innerHTML=names.map(function(n){return '<li class="chip"><span class="nm">'+esc(n)+'</span></li>'}).join("");
 }
 
 function renderHome(){
@@ -1334,9 +1414,7 @@ function renderHome(){
     '</section>'+
     '<section class="sheet pad stack" aria-label="Play">'+
      (noLib?'<p class="notice">Couldn\'t load the multiplayer connection. Check your internet and reload. If you opened this inside a preview window, open it in Safari or Chrome instead.</p>':'')+
-     (roomParam?'<p class="notice" style="border-color:var(--blue);background:var(--blue-soft)">You\'re joining room <b>'+esc(roomParam)+'</b>. Pick a nickname and tap Join.</p>':'')+
-     '<label for="nick">Your nickname<span class="nickrow"><input type="text" id="nick" maxlength="18" autocomplete="off" placeholder="e.g. '+esc(pick(SILLY_NAMES))+'" value="'+esc(ME.name)+'">'+
-      '<button class="ghost dice" id="diceBtn" type="button" title="Give me a silly name" aria-label="Random silly nickname">🎲</button></span></label>'+
+     (roomParam?'<p class="notice" style="border-color:var(--blue);background:var(--blue-soft)">You\'re joining room <b>'+esc(roomParam)+'</b>. Tap Join, then pick your name inside.</p>':'')+
      '<div class="stack"><h2>Join a room</h2>'+
       '<form class="row" id="joinForm" autocomplete="off"><input type="text" id="jcode" class="codeinput" maxlength="4" placeholder="ABCD" aria-label="Room code" value="'+esc(roomParam)+'"><button class="blue" type="submit">Join</button></form></div>'+
      '<div class="stack"><h2>Host a room</h2>'+
@@ -1346,14 +1424,12 @@ function renderHome(){
      '<div class="row"><button class="mini ghost" id="soundBtn" type="button" aria-pressed="'+soundOn+'">'+soundBtnLabel()+'</button></div>'+
     '</section>'+
    '</div>';
-  $("#nick").addEventListener("input",function(e){ME.name=e.target.value;LS.set("wao_nick",cleanName(ME.name))});
-  $("#diceBtn").onclick=function(){var n=pick(SILLY_NAMES);$("#nick").value=n;ME.name=n;LS.set("wao_nick",n);sfx("pop")};
   $("#soundBtn").onclick=toggleSound;
-  function needName(){ME.name=cleanName($("#nick").value);if(!ME.name){toast("You need a name. Even a wrong one. Try the dice.");$("#nick").focus();return true}LS.set("wao_nick",ME.name);return false}
-  $("#joinForm").addEventListener("submit",function(e){e.preventDefault();if(noLib||needName())return;var c=cleanCode($("#jcode").value);if(c.length!==4){toast("Room codes are 4 letters.");return}joinGame(c)});
-  $("#hostBtn").onclick=function(){if(noLib||needName())return;startHost(null)};
-  if(saved)$("#resumeBtn").onclick=function(){if(noLib||needName())return;startHost(saved.h)};
-  if(roomParam&&ME.name)$("#jcode").focus();
+  // Names are picked inside the room, after joining, where we can see which ones are taken.
+  $("#joinForm").addEventListener("submit",function(e){e.preventDefault();if(noLib)return;var c=cleanCode($("#jcode").value);if(c.length!==4){toast("Room codes are 4 letters.");return}joinGame(c)});
+  $("#hostBtn").onclick=function(){if(noLib)return;startHost(null)};
+  if(saved)$("#resumeBtn").onclick=function(){if(noLib)return;startHost(saved.h)};
+  if(roomParam)$("#jcode").focus();
 }
 
 function renderWaiting(){
@@ -1362,7 +1438,7 @@ function renderWaiting(){
     (tries>=BROKERS.length?"Can't find room "+pCode+". Check the code and that the host still has the game open. Switching between Wi-Fi and mobile data can help.":"Looking for room "+pCode+"…");
   if(L.built==="wait:"+msg)return;L.built="wait:"+msg;
   $("#app").innerHTML='<section class="sheet pad stack center"><div class="bigstop oct" style="width:120px;font-size:1.6rem;animation:none">'+(closed?"BYE":"…")+'</div><p>'+esc(msg)+'</p><button class="ghost" id="backBtn" type="button">Back</button></section>';
-  $("#backBtn").onclick=function(){closeConn();role=null;V=null;L.built="";render()};
+  $("#backBtn").onclick=function(){try{sessionStorage.removeItem("wao_inroom")}catch(e){}closeConn();role=null;V=null;L.built="";render()};
 }
 
 function joinURL(){
@@ -1600,6 +1676,7 @@ if(document.fonts&&document.fonts.load)document.fonts.load("700 40px Oswald").ca
 /* resume or auto-join */
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&role==="player"&&lastState&&Date.now()-lastState>8000)playerConnect(pB)});
 render();
+(function(){var back=null;try{back=sessionStorage.getItem("wao_inroom")}catch(e){}if(back&&typeof mqtt!=="undefined")joinGame(cleanCode(back))})();
 })();
 </script>
 </body>
