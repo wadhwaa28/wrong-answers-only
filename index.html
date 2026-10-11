@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wrong Answers Only</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bowlby+One&family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* A graded exam sheet on a desk. Red pen marks the good (wrong) stuff; a stop-sign octagon ends each round. */
+:root{
+  --desk:#e9ece4; --paper:#fffef8; --grid:#dfe6ef; --ink:#1d2433; --muted:#5d6678;
+  --red:#d7263d; --red-soft:#fbe3e6; --blue:#2c4fb8; --blue-soft:#e3e9fb; --line:#cfd6e2; --ok:#1f8a5b; --gold:#c98a00;
+  --display:"Bowlby One","Arial Black",Impact,sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hand:"Caveat","Comic Sans MS","Bradley Hand",cursive;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --desk:#14181f; --paper:#1d2330; --grid:#262e3d; --ink:#eef1f6; --muted:#9aa4b6;
+  --red:#ff5a6e; --red-soft:#3a1f27; --blue:#8aa6ff; --blue-soft:#232d48; --line:#323b4d; --ok:#4fd29a; --gold:#f2b632; color-scheme:dark}}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--desk);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-inline:16px;padding-block:calc(20px + env(safe-area-inset-top,0px)) calc(130px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:grid;gap:20px}
+h1,h2,h3{margin:0;font-weight:400}
+h1{font-family:var(--display);font-size:clamp(2.2rem,7vw,4rem);line-height:.95;letter-spacing:.01em}
+h1 span{display:inline-block}
+h1 .w{transform:rotate(-3deg);color:var(--red);position:relative}
+h1 .w::after{content:"";position:absolute;left:-4%;right:-4%;top:52%;height:.09em;background:var(--ink);transform:rotate(4deg);border-radius:4px}
+h1 .o{transform:rotate(2deg) translateY(.06em)}
+h2{font-family:var(--display);font-size:1.25rem;letter-spacing:.02em}
+.tag{font-family:var(--hand);font-size:1.6rem;color:var(--blue);transform:rotate(-1.5deg);margin:6px 0 0}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:6px;
+  box-shadow:0 1px 0 var(--line),0 10px 24px -14px rgba(0,0,0,.35);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px);background-size:100% 30px;position:relative;min-width:0}
+.margin{padding:20px 20px 22px 52px}
+.margin::before{content:"";position:absolute;left:34px;top:0;bottom:0;width:2px;background:var(--red);opacity:.5}
+.pad{padding:20px}
+.stack{display:grid;gap:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:780px){.split{grid-template-columns:1fr}}
+
+label{font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--muted);display:grid;gap:4px}
+input[type=text],select{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:6px;padding:9px 10px;min-width:0;width:100%}
+input[type=text]:focus,select:focus{border-color:var(--blue);outline:none}
+.codeinput{text-transform:uppercase;letter-spacing:.3em;font-family:var(--display)!important;max-width:10rem;flex:1}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:6px;border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);padding:9px 14px;transition:transform .1s,background .15s;touch-action:manipulation}
+button:hover:not(:disabled){transform:translateY(-1px)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.primary{background:var(--red);border-color:var(--red);color:#fff}
+.blue{background:var(--blue);border-color:var(--blue);color:var(--paper)}
+.ghost{border-color:var(--line);background:transparent}
+.mini{padding:4px 10px;font-size:.85rem}
+
+/* examples */
+.ex{display:grid;gap:8px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.ex:last-child{border-bottom:0}
+.ex .ptxt{font-weight:700;font-size:1.05rem}
+.marks{display:flex;flex-wrap:wrap;gap:6px 18px}
+.mark{font-family:var(--hand);font-size:1.45rem;line-height:1.1;color:var(--blue)}
+.mark b{font-family:var(--body);font-size:.9rem;margin-right:4px}
+.mark.y b{color:var(--ok)} .mark.n b{color:var(--red)}
+.mark.n{text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
+.notice{padding:12px 14px;border:1.5px solid var(--red);border-radius:6px;background:var(--red-soft);color:var(--ink);font-size:.92rem}
+
+/* room header */
+.topbar{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center;justify-content:space-between}
+.topbar .left{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.letter{width:68px;height:68px;border-radius:10px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:var(--display);font-size:2.4rem;transform:rotate(-4deg);flex:none;box-shadow:3px 3px 0 var(--red)}
+.letter.empty{background:var(--grid);color:var(--muted);box-shadow:none}
+.meta{font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+.roomcode{font-family:var(--display);font-size:1.5rem;letter-spacing:.2em}
+.conn{display:flex;gap:6px;align-items:center;font-size:.8rem;color:var(--muted)}
+.conn .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.conn.off .dot{background:var(--red)}
+.players{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.chip{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--paper);font-weight:600;font-size:.9rem;max-width:100%}
+.chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:12ch}
+.chip.me{border-color:var(--blue)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.chip.off{opacity:.5}.chip.off .dot{background:var(--muted)}
+.chip .sc{font-family:var(--display);font-variant-numeric:tabular-nums}
+.chip .st{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip .st.done{color:var(--ok)}
+.crown{color:var(--gold);font-size:.8rem}
+
+/* share box */
+.share{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+@media (max-width:520px){.share{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.qr{background:#fff;padding:10px;border-radius:8px;width:max-content;max-width:100%}
+.qr img,.qr canvas{display:block;width:150px;height:150px;max-width:100%}
+.bigcode{font-family:var(--display);font-size:2.6rem;letter-spacing:.2em;color:var(--red);line-height:1}
+.link{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+
+/* prompts */
+.prompts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.pcard{padding:16px 18px 18px 46px;display:grid;gap:8px;align-content:start}
+.pcard::before{content:"";position:absolute;left:30px;top:0;bottom:0;width:2px;background:var(--red);opacity:.5}
+.pnum{position:absolute;left:8px;top:14px;font-family:var(--display);color:var(--red);font-size:1rem}
+.cat{justify-self:start;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:2px 8px;border-radius:3px;background:var(--ink);color:var(--paper)}
+.ptext{font-family:var(--display);font-size:1.15rem;line-height:1.2;text-wrap:balance}
+.rule{font-size:.88rem;font-weight:600;padding:4px 8px;border-radius:4px;justify-self:start}
+.rule.plain{background:var(--red-soft);color:var(--red)}
+.rule.cond{background:var(--blue-soft);color:var(--blue)}
+.ansin{font-family:var(--hand)!important;font-size:1.65rem!important;color:var(--blue)!important;background:transparent!important;border:0!important;border-bottom:2px dashed var(--muted)!important;border-radius:0!important;padding:2px 4px!important}
+.ansin:focus{border-bottom-color:var(--blue)!important}
+.ansin.dup{color:var(--red)!important;border-bottom:2px solid var(--red)!important}
+
+/* sticky bar */
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--line);z-index:5}
+.bar .in{max-width:1080px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.timer{flex:1 1 200px;display:flex;align-items:center;gap:10px;min-width:0}
+.track{flex:1;height:10px;border-radius:999px;background:var(--grid);border:1px solid var(--line);overflow:hidden}
+.track i{display:block;height:100%;background:var(--blue);transform-origin:left;transition:transform .25s linear}
+.track.low i{background:var(--red)}
+.secs{font-variant-numeric:tabular-nums;font-weight:700;min-width:4ch;text-align:right}
+.oct{clip-path:polygon(29.3% 0,70.7% 0,100% 29.3%,100% 70.7%,70.7% 100%,29.3% 100%,0 70.7%,0 29.3%)}
+.stop{width:84px;height:84px;margin-top:-40px;border:0;border-radius:0;background:var(--red);color:#fff;font-family:var(--display);font-size:1.25rem;letter-spacing:.04em;display:grid;place-items:center;padding:0;flex:none;
+  box-shadow:inset 0 0 0 4px #fff,inset 0 0 0 7px var(--red)}
+.stop:disabled{opacity:.35}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--desk) 88%,transparent);display:grid;place-items:center;z-index:20;padding:16px}
+.bigstop{width:min(70vw,260px);aspect-ratio:1;max-width:100%;background:var(--red);color:#fff;display:grid;place-items:center;font-family:var(--display);font-size:clamp(2.5rem,12vw,4.5rem);
+  box-shadow:inset 0 0 0 8px #fff,inset 0 0 0 14px var(--red);animation:slam .45s cubic-bezier(.2,1.6,.4,1);margin:0 auto}
+.overlay .cap{text-align:center;display:grid;gap:6px;margin-top:16px}
+.overlay .cap .h{font-family:var(--hand);font-size:2rem;color:var(--ink)}
+@keyframes slam{from{transform:scale(2.2) rotate(-20deg);opacity:0}to{transform:none;opacity:1}}
+.popcard{background:var(--paper);border:2px solid var(--ink);border-radius:8px;padding:24px 22px;max-width:420px;width:100%;display:grid;gap:12px;text-align:center;
+  box-shadow:6px 6px 0 var(--red);animation:wobble .5s cubic-bezier(.2,1.6,.4,1)}
+.popcard .big{font-family:var(--display);font-size:clamp(1.4rem,5vw,1.8rem);line-height:1.1;text-wrap:balance}
+.popcard .big s{color:var(--red);text-decoration-thickness:3px}
+.popcard .h{font-family:var(--hand);font-size:1.5rem;color:var(--blue);overflow-wrap:anywhere}
+@keyframes wobble{0%{transform:scale(.6) rotate(-8deg);opacity:0}60%{transform:scale(1.04) rotate(2deg);opacity:1}100%{transform:none}}
+
+/* voting / results */
+.vlist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.vlist li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.vlist li:last-child{border-bottom:0}
+.atext{font-family:var(--hand);font-size:1.55rem;line-height:1.1;color:var(--blue);overflow-wrap:anywhere}
+.atext.out{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px}
+.who{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--muted)}
+.vctl{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tog{padding:5px 10px;font-size:.85rem;border-color:var(--line);background:transparent}
+.tog.okay{border-color:var(--ok);color:var(--ok)}
+.tog.bad{border-color:var(--red);color:var(--red);background:var(--red-soft)}
+.tog.star[aria-pressed="true"]{border-color:var(--gold);color:var(--paper);background:var(--gold)}
+.stamp{font-family:var(--display);font-size:.75rem;letter-spacing:.05em;padding:3px 7px;border:2.5px solid currentColor;border-radius:4px;transform:rotate(-5deg);white-space:nowrap}
+.stamp.ok{color:var(--ok)}.stamp.out{color:var(--red)}.stamp.top{color:var(--gold)}
+.pts{font-family:var(--display);font-variant-numeric:tabular-nums;min-width:3ch;text-align:right}
+.empty{color:var(--muted);font-size:.95rem}
+.board{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.board li{display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;border-radius:6px;background:var(--paper);border:1.5px solid var(--line)}
+.board li.first{border-color:var(--gold)}
+.place{font-family:var(--display);font-size:1.2rem;color:var(--muted)}
+.board li.first .place{color:var(--gold)}
+.board .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board .sc{font-family:var(--display);font-size:1.3rem;font-variant-numeric:tabular-nums}
+.best{display:grid;gap:4px;padding:14px 16px;border:2.5px dashed var(--gold);border-radius:8px}
+.best .atext{font-size:2rem}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-weight:600;z-index:30;max-width:calc(100% - 32px)}
+.center{text-align:center;justify-items:center}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="overlay" id="dupPop" hidden role="dialog" aria-modal="true" aria-labelledby="dupTitle">
+  <div class="popcard">
+    <div class="big" id="dupTitle">It's wrong answers, not <s>unoriginal</s> answers.</div>
+    <div class="muted">You used <span class="h" id="dupWord"></span> more than once. Every prompt deserves its own fresh wrongness.</div>
+    <button class="primary" id="dupOk" type="button">Fine, I'll be creative</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= connection: free public MQTT servers, no accounts =================
+   The host's browser keeps the game. Players send to <room>/in, the host
+   broadcasts the whole game to <room>/state. Servers are tried in order and
+   the join link remembers which one the host is on. */
+var BROKERS=[
+  {url:"wss://public.cloud.shiftr.io",username:"public",password:"public"},
+  {url:"wss://broker.hivemq.com:8884/mqtt"},
+  {url:"wss://test.mosquitto.org:8081/mqtt"}
+];
+var TOPIC="wrong-answers-only/v2/";
+
+/* ================= content ================= */
+/* a: the base thing. sub: narrower kinds used only as plain prompts ("Name a superhero movie." = one category, no conditions).
+   p: conditions phrased right after the noun ("a movie about a superhero"). c: "that ..." conditions. */
+var CATS=[
+ {n:"Fruit",a:"a fruit",sub:["a tropical fruit","a citrus fruit","a dried fruit"],p:["from Asia","with fuzzy skin"],c:["is red","grows on trees","is smaller than a golf ball"]},
+ {n:"Animal",a:"an animal",sub:["a farm animal","a sea animal","a jungle animal"],p:["with stripes","from Australia","with no legs"],c:["can fly","is a mammal","weighs less than a cat","lives in the ocean"]},
+ {n:"Country",a:"a country",sub:["a European country","an island country"],p:["in Europe","in the Southern Hemisphere","with red on its flag"],c:["is landlocked","has more than 50 million people","has hosted the Olympics"]},
+ {n:"Food",a:"a food",sub:["a breakfast food","a dessert","a fast food"],p:["from Italy","with cheese in it"],c:["is spicy","is eaten with chopsticks","is served cold","is deep fried"]},
+ {n:"Job",a:"a job",sub:["a medical job","an office job"],p:["with a uniform","in a hospital"],c:["is done outdoors","needs a college degree","is done at night"]},
+ {n:"Movie",a:"a movie",sub:["a superhero movie","a horror movie","an animated movie","a Christmas movie"],p:["about a superhero","about a dog","about space","with a talking animal"],c:["came out before 2000","won Best Picture","has a sequel"]},
+ {n:"Vegetable",a:"a vegetable",sub:["a leafy vegetable","a root vegetable"],p:["with a strong smell"],c:["is green","grows underground","is usually eaten raw","is orange"]},
+ {n:"Sport",a:"a sport",sub:["a winter sport","a water sport","a team sport"],p:["with a ball","with a racket"],c:["is in the Summer Olympics","is played on ice","is played in teams"]},
+ {n:"City",a:"a city",sub:["a capital city","a beach city"],p:["in Asia","in the United States","on the coast"],c:["is a capital","has more than a million people"]},
+ {n:"Body part",a:"a body part",sub:["a body part on your face"],p:["with a bone in it"],c:["you have two of","is above the neck","you can see right now"]},
+ {n:"Kitchen",a:"something in a kitchen",sub:["a kitchen appliance","a cooking utensil"],p:["made of metal","with a plug"],c:["is sharp","fits in a drawer"]},
+ {n:"Drink",a:"a drink",sub:["a hot drink","a cocktail","a soft drink"],p:["with bubbles","made from fruit"],c:["has alcohol in it","is served hot"]},
+ {n:"Instrument",a:"a musical instrument",sub:["a string instrument","a brass instrument"],p:["with strings","with keys"],c:["you blow into","is in an orchestra","is smaller than a backpack"]},
+ {n:"Furniture",a:"a piece of furniture",sub:["a piece of office furniture","a piece of garden furniture"],p:["with legs","with drawers"],c:["you can sleep on","usually lives in a bedroom"]},
+ {n:"First name",a:"a first name",sub:["a boy's name","a girl's name","a dog's name"],p:["from the Bible"],c:["is popular in Spain","sounds old-fashioned"]},
+ {n:"Clothing",a:"a piece of clothing",sub:["a piece of winter clothing","a piece of swimwear"],p:["with buttons","for your feet"],c:["gets worn at weddings","is usually black"]},
+ {n:"Vehicle",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],p:["with two wheels","on rails"],c:["seats more than ten people","is faster than a horse"]},
+ {n:"Hobby",a:"a hobby",sub:["an outdoor hobby","an expensive hobby"],p:[],c:["is done alone","needs special equipment","is quiet"]},
+ {n:"Bird",a:"a bird",sub:["a bird of prey","a pet bird"],p:["with a long beak"],c:["can't fly","lives near water","is bigger than a chicken","is mostly black"]},
+ {n:"Toy",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]}
+];
+var LETTERS="ABCDEFGHIJLMNOPRSTUVW".split("");
+var ANS=5, VOTE_SECS=120, STOP_PAUSE=3500, ONLINE_MS=16000;
+
+/* ================= utils ================= */
+function $(s){return document.querySelector(s)}
+function esc(s){var d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
+function rnd(n){return Math.floor(Math.random()*n)}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=rnd(i+1),t=a[i];a[i]=a[j];a[j]=t}return a}
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+var LS={get:function(k){try{return localStorage.getItem(k)}catch(e){return null}},set:function(k,v){try{localStorage.setItem(k,v)}catch(e){}},del:function(k){try{localStorage.removeItem(k)}catch(e){}}};
+function listJoin(a){return a.length<2?a[0]:a.length===2?a.join(" and "):a.slice(0,-1).join(", ")+", and "+a[a.length-1]}
+var toastT;function toast(m){var t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2800)}
+function str(s,n){return typeof s==="string"?s.slice(0,n):""}
+function cleanCode(s){return String(s||"").toUpperCase().replace(/[^A-Z]/g,"").slice(0,4)}
+function cleanName(s){return String(s||"").replace(/\s+/g," ").trim().slice(0,18)}
+var normAns=function(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/^\s*(a|an|the)\s+/,"").replace(/\s+/g," ").trim()};
+
+function makePrompts(letter){
+  var cats=shuffle(CATS.slice()).slice(0,ANS);
+  var plain=shuffle([0,1,2,3,4]).slice(0,2);
+  return cats.map(function(c,i){
+    if(plain.indexOf(i)>=0){
+      // A narrower kind ("a superhero movie") is still one plain category: no conditions.
+      var subj=c.sub.length&&Math.random()<.55?c.sub[rnd(c.sub.length)]:c.a;
+      return {cat:c.n,a:subj,plain:true,text:"Name "+subj+"."};
+    }
+    // A phrase after the noun ("a movie about a superhero") IS a condition.
+    var prep=c.p.length&&Math.random()<.55?c.p[rnd(c.p.length)]:"";
+    var conds=["starts with the letter "+letter].concat(shuffle(c.c.slice()).slice(0,prep?rnd(2):1+rnd(2)));
+    if(Math.random()<.3) conds.push("has more than "+(3+rnd(4))+" letters");
+    return {cat:c.n,a:c.a,plain:false,text:"Name "+c.a+(prep?" "+prep:"")+" that "+listJoin(conds)+"."};
+  });
+}
+function ruleText(p){return p.plain?"Anything that isn't "+p.a+".":"Must be "+p.a+", but break every condition."}
+
+/* ================= identity ================= */
+// One id per browser tab (survives reloads of that tab), so two tabs on one device are two players.
+var ME={id:null,name:LS.get("wao_nick")||""};
+try{ME.id=sessionStorage.getItem("wao_pid")}catch(e){}
+if(!ME.id){ME.id="p"+Math.random().toString(36).slice(2,12);try{sessionStorage.setItem("wao_pid",ME.id)}catch(e){}}
+var params=new URLSearchParams(location.search);
+var roomParam=cleanCode(params.get("room"));
+var bParam=parseInt(params.get("b"),10);
+
+var role=null;      // "host" | "player"
+var H=null;         // host-only: the authoritative game
+var V=null;         // the game as everyone sees it (host builds it, players receive it)
+var CONN=null, connUp=false, lastState=0, tries=0, findTimer=null, pCode="", pB=0;
+var L={ansKey:"",myAns:null,ansTimer:null,flushed:"",voteKey:"",myVote:null,voteTimer:null,built:"",bodyKey:"",bodySig:"",dupShownFor:""};
+
+/* ================= MQTT helper ================= */
+function connectBroker(idx,h){
+  var b=BROKERS[idx],up=false,failed=false,downTimer=null;
+  var opts={clientId:"wao_"+Math.random().toString(36).slice(2,12),keepalive:20,connectTimeout:7000,reconnectPeriod:2000,clean:true,protocolVersion:4};
+  if(b.username){opts.username=b.username;opts.password=b.password}
+  var client=mqtt.connect(b.url,opts);
+  function fail(){if(failed)return;failed=true;clearTimeout(downTimer);try{client.end(true)}catch(e){}h.onFail()}
+  var firstTimer=setTimeout(function(){if(!up)fail()},8000);
+  client.on("connect",function(){clearTimeout(firstTimer);clearTimeout(downTimer);downTimer=null;up=true;h.onUp(client)});
+  client.on("message",function(topic,payload,packet){var d;try{d=JSON.parse(payload.toString())}catch(e){return}h.onMessage(topic,d,packet)});
+  client.on("offline",function(){if(h.onDown)h.onDown();if(up&&!downTimer)downTimer=setTimeout(fail,15000)});
+  client.on("error",function(){});
+  return {client:client,close:function(){failed=true;clearTimeout(firstTimer);clearTimeout(downTimer);try{client.end(true)}catch(e){}}};
+}
+function closeConn(){if(CONN){CONN.close();CONN=null}connUp=false;clearTimeout(findTimer)}
+
+/* ================= HOST ================= */
+function newCode(){var A="ABCDEFGHJKLMNPQRSTUVWXYZ",s="";for(var i=0;i<4;i++)s+=A[rnd(A.length)];return s}
+function startHost(resume){
+  H=resume||{code:newCode(),b:0,game:1,phase:"lobby",round:0,rounds:5,secs:90,letter:"",prompts:[],usedLetters:[],deadline:0,stopAt:0,stoppedBy:"",players:{},answers:{},votes:{}};
+  var me=H.players[ME.id];
+  H.players[ME.id]={name:ME.name,joined:me?me.joined:Date.now(),seen:Date.now(),left:false};
+  if(H.phase==="answer"||H.phase==="vote") H.deadline=Math.max(H.deadline,Date.now()+15000); // give everyone time after a host reload
+  role="host";L.built="";hostConnect(H.b||0);push();
+}
+function hostTopic(){return TOPIC+H.code}
+function hostConnect(idx){
+  closeConn();H.b=idx;
+  CONN=connectBroker(idx,{
+    onUp:function(c){c.subscribe(hostTopic()+"/in",{qos:0});connUp=true;broadcast();render()},
+    onDown:function(){connUp=false;render()},
+    onFail:function(){connUp=false;render();setTimeout(function(){if(role==="host")hostConnect((idx+1)%BROKERS.length)},500)},
+    onMessage:function(topic,d){if(topic===hostTopic()+"/in")hostHandle(d)}
+  });
+}
+var bcT=null;
+function broadcast(){
+  clearTimeout(bcT);bcT=null;
+  var c=CONN&&CONN.client;if(!c||!c.connected||!H)return;
+  var s=buildState(true);
+  try{c.publish(hostTopic()+"/state",JSON.stringify(s),{qos:0,retain:false})}catch(e){}
+}
+var saveT=null;
+function push(){
+  V=buildState(false);render();
+  if(!bcT) bcT=setTimeout(broadcast,120);
+  clearTimeout(saveT);saveT=setTimeout(function(){if(H)LS.set("wao_host",JSON.stringify({h:H,at:Date.now()}))},800);
+}
+function rk(){return H.game+"-"+H.round}
+function activeIds(){return Object.keys(H.players).filter(function(id){return !H.players[id].left}).sort(function(a,b){return (H.players[a].joined||0)-(H.players[b].joined||0)})}
+function isOn(id){return id===ME.id||(Date.now()-(H.players[id].seen||0))<ONLINE_MS}
+function nameOf(id){return (H.players[id]&&H.players[id].name)||"Someone"}
+
+function scoreRound(g,r){
+  var A=H.answers[g+"-"+r]||{},VT=H.votes[g+"-"+r]||{},rows=[],i,pid;
+  for(i=0;i<ANS;i++){
+    var pr=[];
+    for(pid in A){
+      var text=(A[pid][i]||"").trim();if(!text)continue;
+      var voters=Object.keys(VT).filter(function(v){return v!==pid});
+      var rejects=voters.filter(function(v){return VT[v].reject&&VT[v].reject[pid+"|"+i]}).length;
+      var funny=voters.filter(function(v){return VT[v].funny&&VT[v].funny[i]===pid}).length;
+      var out=voters.length>0&&rejects*2>voters.length;
+      pr.push({pid:pid,i:i,text:text,out:out,funny:funny,pts:0,top:false});
+    }
+    var max=0;pr.forEach(function(x){if(!x.out&&x.funny>max)max=x.funny});
+    pr.forEach(function(x){if(!x.out){x.top=max>0&&x.funny===max;x.pts=5+5*x.funny+(x.top?5:0)}});
+    rows=rows.concat(pr);
+  }
+  var totals={};rows.forEach(function(x){totals[x.pid]=(totals[x.pid]||0)+x.pts});
+  return {rows:rows,totals:totals};
+}
+function gameTotals(){
+  var t={},last=(H.phase==="results"||H.phase==="final")?H.round:H.round-1;
+  for(var k=1;k<=last;k++){var s=scoreRound(H.game,k);for(var id in s.totals)t[id]=(t[id]||0)+s.totals[id]}
+  return t;
+}
+function allVoted(){
+  var VT=H.votes[rk()]||{};
+  var need=activeIds().filter(isOn);
+  return need.length>0&&need.every(function(id){return VT[id]&&VT[id].done});
+}
+function buildState(forWire){
+  var now=Date.now(),A=H.answers[rk()]||{},VT=H.votes[rk()]||{},tot=gameTotals();
+  var s={t:"state",code:H.code,b:H.b,host:ME.id,game:H.game,phase:H.phase,round:H.round,rounds:H.rounds,secs:H.secs,letter:H.letter,prompts:H.prompts,
+    stoppedBy:H.stoppedBy==="time"?"":nameOf(H.stoppedBy),
+    players:activeIds().map(function(id){return {id:id,name:H.players[id].name,score:tot[id]||0,online:isOn(id),
+      filled:(A[id]||[]).filter(function(x){return x&&x.trim()}).length,voted:!!(VT[id]&&VT[id].done)}})};
+  if(H.phase==="answer"||H.phase==="vote"){
+    if(forWire) s.timeLeft=Math.max(0,H.deadline-now); else s.deadlineLocal=H.deadline;
+  }
+  if(H.phase==="vote") s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return (A[pid][i]||"").trim()}).map(function(pid){return {pid:pid,text:A[pid][i].trim()}})});
+  if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals}}
+  if(H.phase==="final"){
+    var best=null;
+    for(var k=1;k<=H.round;k++) scoreRound(H.game,k).rows.forEach(function(x){if(!x.out&&x.funny>0&&(!best||x.funny>best.funny))best={text:x.text,name:nameOf(x.pid),funny:x.funny,round:k}});
+    s.best=best;
+  }
+  return s;
+}
+function startRound(){
+  var used=H.round>=1?H.usedLetters:[];
+  var pool=LETTERS.filter(function(l){return used.indexOf(l)<0});if(!pool.length)pool=LETTERS;
+  var letter=pool[rnd(pool.length)];
+  H.round+=1;H.phase="answer";H.letter=letter;H.prompts=makePrompts(letter);H.usedLetters=used.concat(letter);
+  H.deadline=Date.now()+H.secs*1000;H.stopAt=0;H.stoppedBy="";H.answers[rk()]={};H.votes[rk()]={};
+}
+function hostHandle(d){
+  if(!H||!d||typeof d!=="object"||typeof d.id!=="string"||d.id.length>40)return;
+  var id=d.id,p=H.players[id],now=Date.now(),mine=id===ME.id;
+  if(d.t==="hello"){
+    var nm=cleanName(d.name)||"Mystery guest";
+    if(!p){H.players[id]={name:nm,joined:now,seen:now,left:false};push();return}
+    var changed=p.left||p.name!==nm||!isOn(id);
+    p.name=nm;p.seen=now;p.left=false;
+    if(changed||d.need)push();
+    return;
+  }
+  if(!p)return;
+  p.seen=now;
+  if(d.t==="leave"){p.left=true;push();return}
+  if(d.t==="ans"){
+    if(d.game!==H.game||d.round!==H.round||(H.phase!=="answer"&&H.phase!=="stopping"))return;
+    if(!Array.isArray(d.answers))return;
+    (H.answers[rk()]=H.answers[rk()]||{})[id]=d.answers.slice(0,ANS).map(function(a){return str(a,80)});
+    while(H.answers[rk()][id].length<ANS)H.answers[rk()][id].push("");
+    push();return;
+  }
+  if(d.t==="stop"){
+    if(d.game!==H.game||d.round!==H.round||H.phase!=="answer")return;
+    var a=(H.answers[rk()]||{})[id]||[];
+    if(a.filter(function(x){return x&&x.trim()}).length<ANS)return;
+    H.phase="stopping";H.stopAt=now;H.stoppedBy=id;push();return;
+  }
+  if(d.t==="vote"){
+    if(d.game!==H.game||d.round!==H.round||H.phase!=="vote")return;
+    var rej={},fun={},k;
+    if(d.reject&&typeof d.reject==="object")for(k in d.reject){if(k.length<60&&d.reject[k]===true)rej[k]=true}
+    if(d.funny&&typeof d.funny==="object")for(k in d.funny){if(/^[0-4]$/.test(k)&&typeof d.funny[k]==="string")fun[k]=d.funny[k].slice(0,40)}
+    (H.votes[rk()]=H.votes[rk()]||{})[id]={reject:rej,funny:fun,done:!!d.done};
+    push();return;
+  }
+  if(!mine)return; // everything below is the host's own controls
+  if(d.t==="settings"){if([3,5,7].indexOf(d.rounds)>=0)H.rounds=d.rounds;if([60,90,120].indexOf(d.secs)>=0)H.secs=d.secs;push();return}
+  if(d.t==="start"&&(H.phase==="lobby"||H.phase==="results")){startRound();push();return}
+  if(d.t==="final"&&H.phase==="results"){H.phase="final";push();return}
+  if(d.t==="again"&&H.phase==="final"){H.game+=1;H.round=0;H.phase="lobby";H.letter="";H.prompts=[];H.usedLetters=[];push();return}
+  if(d.t==="reveal"&&H.phase==="vote"){H.phase="results";push();return}
+}
+function hostTick(){
+  if(role!=="host"||!H)return;
+  var now=Date.now();H.players[ME.id].seen=now;
+  if(H.phase==="answer"&&now>H.deadline){H.phase="stopping";H.stopAt=now;H.stoppedBy="time";push()}
+  else if(H.phase==="stopping"&&now>H.stopAt+STOP_PAUSE){H.phase="vote";H.deadline=now+VOTE_SECS*1000;push()}
+  else if(H.phase==="vote"&&(now>H.deadline||allVoted())){H.phase="results";push()}
+}
+function endRoom(){
+  if(H){H.phase="closed";broadcast()}
+  LS.del("wao_host");
+  setTimeout(function(){closeConn();H=null;V=null;role=null;L.built="";render()},300);
+}
+
+/* ================= PLAYER ================= */
+function pTopic(){return TOPIC+pCode}
+function joinGame(code){
+  role="player";pCode=code;V=null;L.built="";tries=0;
+  pB=(bParam>=0&&bParam<BROKERS.length&&code===roomParam)?bParam:0;
+  playerConnect(pB);render();
+}
+function sendIn(obj){
+  var c=CONN&&CONN.client;
+  if(c&&c.connected){try{c.publish(pTopic()+"/in",JSON.stringify(obj),{qos:0})}catch(e){}return true}
+  return false;
+}
+function playerConnect(idx){
+  closeConn();pB=idx;lastState=0;render();
+  CONN=connectBroker(idx,{
+    onUp:function(c){
+      c.subscribe(pTopic()+"/state",{qos:0});connUp=true;
+      sendIn({t:"hello",id:ME.id,name:ME.name,need:true});
+      clearTimeout(findTimer);
+      findTimer=setTimeout(function(){if(!lastState){tries++;playerConnect((idx+1)%BROKERS.length)}},6000);
+      render();
+    },
+    onDown:function(){connUp=false;render()},
+    onFail:function(){connUp=false;setTimeout(function(){if(role==="player")playerConnect((idx+1)%BROKERS.length)},500)},
+    onMessage:function(topic,d,packet){
+      if(packet&&packet.retain)return;
+      if(topic!==pTopic()+"/state"||!d||d.t!=="state"||d.code!==pCode)return;
+      if(typeof d.timeLeft==="number")d.deadlineLocal=Date.now()+d.timeLeft;
+      V=d;lastState=Date.now();tries=0;render();
+    }
+  });
+}
+function leaveGame(){
+  act({t:"leave"});
+  setTimeout(function(){closeConn();role=null;V=null;L.built="";history.replaceState(null,"",location.pathname);roomParam="";render()},250);
+}
+
+/* ================= actions shared by host and players ================= */
+function act(msg){
+  msg.id=ME.id;
+  if(role==="host"){hostHandle(msg);return true}
+  return sendIn(msg);
+}
+function key(){return V.game+"-"+V.round}
+function sendAnswers(){if(V&&L.myAns)act({t:"ans",game:V.game,round:V.round,answers:L.myAns.slice()})}
+function sendVote(){if(V&&L.myVote)act({t:"vote",game:V.game,round:V.round,reject:L.myVote.reject,funny:L.myVote.funny,done:L.myVote.done})}
+
+/* heartbeat */
+var beat=0;
+setInterval(function(){
+  if(role==="host"){hostTick();return}
+  if(role==="player"&&CONN){
+    if(++beat%20===0) sendIn({t:"hello",id:ME.id,name:ME.name}); // every 5 s
+    if(lastState&&Date.now()-lastState>22000)playerConnect((pB+1)%BROKERS.length);
+  }
+},250);
+setInterval(function(){if(role==="host"&&H)push()},3000); // refreshes online dots and resends the game to late joiners
+setInterval(updateTimer,250);
+
+/* ================= duplicate answers ================= */
+function dupIdx(){
+  var seen={},out={};
+  (L.myAns||[]).forEach(function(a,i){var n=normAns(a);if(!n)return;if(seen.hasOwnProperty(n)){out[i]=1;out[seen[n]]=1}else seen[n]=i});
+  return Object.keys(out).map(Number);
+}
+function markDupes(){var d=dupIdx();document.querySelectorAll(".ansin").forEach(function(el,i){el.classList.toggle("dup",d.indexOf(i)>=0)})}
+function showDupPop(i){
+  var pop=$("#dupPop");if(!pop.hidden)return;
+  $("#dupWord").textContent="“"+L.myAns[i].trim()+"”";pop.hidden=false;L.dupShownFor=normAns(L.myAns[i]);
+  $("#dupOk").focus();
+  $("#dupOk").onclick=function(){pop.hidden=true;var el=$("#ans-"+i);if(el){el.focus();el.select()}};
+}
+function checkDupOnLeave(i){var d=dupIdx();if(d.indexOf(i)<0||normAns(L.myAns[i])===L.dupShownFor)return;showDupPop(i)}
+
+/* ================= render ================= */
+function render(){
+  if(!role) return renderHome();
+  if(!V||V.phase==="closed") return renderWaiting();
+  renderRoom();
+}
+
+function renderHome(){
+  if(L.built==="home")return;
+  L.built="home";
+  var saved=null;try{saved=JSON.parse(LS.get("wao_host")||"null")}catch(e){}
+  if(saved&&(Date.now()-saved.at>6*3600e3||!saved.h||saved.h.phase==="closed"))saved=null;
+  var noLib=typeof mqtt==="undefined";
+  $("#app").innerHTML=
+   '<header><h1><span class="w">Wrong</span> <span class="o">Answers</span> <span>Only</span></h1>'+
+   '<p class="tag">a race to be incorrect, judged by your friends</p></header>'+
+   '<div class="split">'+
+    '<section class="sheet margin stack" aria-label="How it works">'+
+     '<h2>How a round works</h2>'+
+     '<p>Everyone gets the same letter and five prompts. Fill in all five, then slam <b>STOP</b> to end the round for everybody. Then you vote on each other\'s answers.</p>'+
+     '<div>'+
+      '<div class="ex"><div class="ptxt">Name a fruit.</div><span class="rule plain">Plain prompt: anything that isn\'t a fruit.</span>'+
+       '<div class="marks"><span class="mark y"><b>✓</b>a trombone</span><span class="mark y"><b>✓</b>my uncle\'s boat</span><span class="mark n"><b>✗</b>banana</span></div></div>'+
+      '<div class="ex"><div class="ptxt">Name a fruit that starts with the letter S, is red, and is smaller than a golf ball.</div><span class="rule cond">Prompt with conditions: still a fruit, but break every condition.</span>'+
+       '<div class="marks"><span class="mark y"><b>✓</b>banana</span><span class="mark n"><b>✗</b>a saxophone</span><span class="mark n"><b>✗</b>strawberry</span></div></div>'+
+      '<div class="ex"><div class="ptxt">Name a superhero movie. <span class="muted">vs.</span> Name a movie about a superhero that starts with the letter T.</div>'+
+       '<span class="rule plain">"A superhero movie" is one category, so the first is plain: anything but a superhero movie.</span>'+
+       '<span class="rule cond">"About a superhero" is a condition, so the second needs a movie that isn\'t about a superhero and doesn\'t start with T.</span>'+
+       '<div class="marks"><span class="mark y"><b>✓</b>Finding Nemo</span><span class="mark n"><b>✗</b>Thor</span></div></div>'+
+     '</div>'+
+     '<p class="small muted"><b>Scoring.</b> An answer that follows its rule earns 5. If most players mark it as breaking the rule, it earns nothing. Each "funniest" vote adds 5, and the funniest answer on each prompt gets 5 more. Funny wins games.</p>'+
+    '</section>'+
+    '<section class="sheet pad stack" aria-label="Play">'+
+     (noLib?'<p class="notice">Couldn\'t load the multiplayer connection. Check your internet and reload. If you opened this inside a preview window, open it in Safari or Chrome instead.</p>':'')+
+     (roomParam?'<p class="notice" style="border-color:var(--blue);background:var(--blue-soft)">You\'re joining room <b>'+esc(roomParam)+'</b>. Pick a nickname and tap Join.</p>':'')+
+     '<label for="nick">Your nickname<input type="text" id="nick" maxlength="18" autocomplete="off" placeholder="e.g. Captain Wrong" value="'+esc(ME.name)+'"></label>'+
+     '<div class="stack"><h2>Join a room</h2>'+
+      '<form class="row" id="joinForm" autocomplete="off"><input type="text" id="jcode" class="codeinput" maxlength="4" placeholder="ABCD" aria-label="Room code" value="'+esc(roomParam)+'"><button class="blue" type="submit">Join</button></form></div>'+
+     '<div class="stack"><h2>Host a room</h2>'+
+      '<p class="small muted">You play too. Keep this screen open during the game: your device runs the room, and everyone else joins with a code, link or QR code. No accounts or sign-ups.</p>'+
+      '<div class="row"><button class="primary" id="hostBtn" type="button">Create room</button>'+
+      (saved?'<button class="ghost" id="resumeBtn" type="button">Resume room '+esc(saved.h.code)+'</button>':'')+'</div></div>'+
+    '</section>'+
+   '</div>';
+  $("#nick").addEventListener("input",function(e){ME.name=e.target.value;LS.set("wao_nick",cleanName(ME.name))});
+  function needName(){ME.name=cleanName($("#nick").value);if(!ME.name){toast("Pick a nickname first.");$("#nick").focus();return true}LS.set("wao_nick",ME.name);return false}
+  $("#joinForm").addEventListener("submit",function(e){e.preventDefault();if(noLib||needName())return;var c=cleanCode($("#jcode").value);if(c.length!==4){toast("Room codes are 4 letters.");return}joinGame(c)});
+  $("#hostBtn").onclick=function(){if(noLib||needName())return;startHost(null)};
+  if(saved)$("#resumeBtn").onclick=function(){if(noLib||needName())return;startHost(saved.h)};
+  if(roomParam&&ME.name)$("#jcode").focus();
+}
+
+function renderWaiting(){
+  var closed=V&&V.phase==="closed";
+  var msg=closed?"The host ended this room.":
+    (tries>=BROKERS.length?"Can't find room "+pCode+". Check the code and that the host still has the game open. Switching between Wi-Fi and mobile data can help.":"Looking for room "+pCode+"…");
+  if(L.built==="wait:"+msg)return;L.built="wait:"+msg;
+  $("#app").innerHTML='<section class="sheet pad stack center"><div class="bigstop oct" style="width:120px;font-size:1.6rem;animation:none">'+(closed?"BYE":"…")+'</div><p>'+esc(msg)+'</p><button class="ghost" id="backBtn" type="button">Back</button></section>';
+  $("#backBtn").onclick=function(){closeConn();role=null;V=null;L.built="";render()};
+}
+
+function joinURL(){
+  var base=location.protocol==="file:"?"":location.origin+location.pathname;
+  return base+"?room="+V.code+(V.b?"&b="+V.b:"");
+}
+function playersHTML(){
+  var s=V;
+  return s.players.map(function(p){
+    var st="";
+    if(s.phase==="answer"||s.phase==="stopping")st='<span class="st '+(p.filled===ANS?"done":"")+'">'+p.filled+'/'+ANS+'</span>';
+    if(s.phase==="vote")st='<span class="st '+(p.voted?"done":"")+'">'+(p.voted?"voted":"voting")+'</span>';
+    return '<li class="chip '+(p.id===ME.id?"me ":"")+(p.online?"":"off")+'"><span class="dot"></span>'+(p.id===s.host?'<span class="crown" title="Host">★</span>':'')+
+      '<span class="nm">'+esc(p.name)+(p.id===ME.id?" (you)":"")+'</span><span class="sc">'+p.score+'</span>'+st+'</li>';
+  }).join("");
+}
+
+function renderRoom(){
+  var s=V,phase=s.phase,isHost=role==="host";
+  if(L.built!=="room"){
+    L.built="room";L.bodyKey="";
+    $("#app").innerHTML=
+      '<div class="topbar"><div class="left"><div class="letter" id="letter"></div>'+
+      '<div><div class="meta" id="rmeta"></div><div class="roomcode" id="rcode"></div><div class="conn" id="conn"><span class="dot"></span><span id="connT"></span></div></div></div>'+
+      '<div class="row"><button class="mini ghost" id="copyBtn" type="button">Copy invite link</button><button class="mini ghost" id="leaveBtn" type="button"></button></div></div>'+
+      '<ul class="players" id="players" aria-label="Players"></ul><main id="body"></main><div id="extra"></div>';
+    $("#leaveBtn").onclick=function(){if(role==="host"){if(L.confirmEnd){endRoom()}else{L.confirmEnd=true;$("#leaveBtn").textContent="Tap again to end for everyone";setTimeout(function(){L.confirmEnd=false;var b=$("#leaveBtn");if(b)b.textContent="End room"},3000)}}else leaveGame()};
+    $("#copyBtn").onclick=copyLink;
+  }
+  $("#leaveBtn").textContent=L.confirmEnd?"Tap again to end for everyone":isHost?"End room":"Leave room";
+  var Lt=$("#letter");Lt.textContent=s.letter&&phase!=="lobby"?s.letter:"?";Lt.classList.toggle("empty",!s.letter||phase==="lobby");
+  $("#rmeta").textContent=phase==="lobby"?"Game "+s.game+" · Lobby":phase==="final"?"Game "+s.game+" · Final scores":"Game "+s.game+" · Round "+s.round+" of "+s.rounds;
+  $("#rcode").textContent=s.code;
+  var cn=$("#conn");cn.classList.toggle("off",!connUp);
+  $("#connT").textContent=connUp?(isHost?"Room open":"Connected"):"Reconnecting…";
+  $("#players").innerHTML=playersHTML();
+  if(phase!=="answer")$("#dupPop").hidden=true;
+
+  if(phase==="answer"||phase==="stopping"){
+    if(L.bodyKey!=="ans-"+key()){L.bodyKey="ans-"+key();buildAnswer()}
+    updateStop();
+    if(phase==="stopping"&&L.flushed!==key()){L.flushed=key();clearTimeout(L.ansTimer);L.ansTimer=null;sendAnswers()}
+  } else if(phase==="lobby"){
+    if(L.bodyKey!=="lobby-"+s.game){L.bodyKey="lobby-"+s.game;buildLobby()}
+    updateLobby();
+  } else {
+    var sig=phase+key()+JSON.stringify(phase==="vote"?s.answers:phase==="results"?[s.results,s.players]:[s.best,s.players]);
+    if(L.bodySig!==sig){L.bodySig=sig;L.bodyKey=phase;if(phase==="vote")buildVote();else if(phase==="results")buildResults();else buildFinal()}
+  }
+
+  var ex=$("#extra");
+  if(phase==="stopping"){
+    if(ex.dataset.k!=="stop"){ex.dataset.k="stop";ex.innerHTML='<div class="overlay"><div><div class="bigstop oct">STOP!</div><div class="cap"><div class="h">'+(s.stoppedBy?esc(s.stoppedBy)+" called it.":"Time's up!")+'</div><div class="muted">Pens down. Voting starts in a moment.</div></div></div></div>'}
+  } else if(phase==="answer"||phase==="vote"){
+    if(ex.dataset.k!==phase){
+      ex.dataset.k=phase;
+      ex.innerHTML='<div class="bar"><div class="in"><div class="timer"><span class="meta">'+(phase==="answer"?"Time left":"Voting time")+'</span><div class="track" id="track"><i id="fill"></i></div><span class="secs" id="secs"></span></div>'+
+        (phase==="answer"?'<button class="stop oct" id="stopBtn" type="button" aria-label="Call stop">STOP</button>':'<button class="blue" id="doneBtn" type="button"></button>'+(isHost?'<button class="ghost mini" id="revealBtn" type="button">Show results now</button>':''))+'</div></div>';
+      if(phase==="answer"){$("#stopBtn").onclick=pressStop;updateStop()}
+      else{$("#doneBtn").onclick=function(){L.myVote.done=!L.myVote.done;sendVote();render()};if(isHost)$("#revealBtn").onclick=function(){act({t:"reveal"})}}
+    }
+    if(phase==="vote"){var b=$("#doneBtn");if(b&&L.myVote)b.textContent=L.myVote.done?"Done ✓ (tap to edit)":"I'm done voting"}
+    updateTimer();
+  } else {ex.innerHTML="";ex.dataset.k=""}
+}
+function updateTimer(){
+  var s=V,el=$("#secs");if(!s||!el||!s.deadlineLocal)return;
+  var total=s.phase==="answer"?s.secs:VOTE_SECS,left=Math.max(0,Math.ceil((s.deadlineLocal-Date.now())/1000));
+  el.textContent=left+"s";$("#fill").style.transform="scaleX("+Math.min(1,left/total)+")";$("#track").classList.toggle("low",left<=10);
+}
+function copyLink(){
+  var url=joinURL();
+  if(!/^https?:/.test(url)){toast("Room code: "+V.code);return}
+  try{navigator.clipboard.writeText(url).then(function(){toast("Invite link copied.")},function(){toast("Room code: "+V.code)})}catch(e){toast("Room code: "+V.code)}
+}
+
+function buildLobby(){
+  var s=V,isHost=role==="host",url=joinURL(),online=/^https?:/.test(url);
+  $("#body").innerHTML='<section class="sheet margin stack">'+
+    '<h2>'+(s.game>1?"Ready for another game?":"Waiting for players")+'</h2>'+
+    '<div class="share"><div class="qr" id="qr"'+(online?'':' hidden')+'></div><div class="stack" style="gap:6px">'+
+      '<div class="meta">Room code</div><div class="bigcode">'+esc(s.code)+'</div>'+
+      (online?'<div class="link">'+esc(url.replace(/^https?:\/\//,""))+'</div><p class="small muted">Friends scan the QR code, open the link, or open this page and type the code.</p>':
+       '<p class="notice">This file is open from your computer, so other devices can\'t reach it. Put it on a free host (see the instructions that came with it), then open that web address instead.</p>')+
+    '</div></div>'+
+    (isHost?'<div class="row"><label for="lrounds">Rounds<select id="lrounds"><option>3</option><option>5</option><option>7</option></select></label>'+
+      '<label for="lsecs">Time per round<select id="lsecs"><option value="60">60 sec</option><option value="90">90 sec</option><option value="120">120 sec</option></select></label></div>'+
+      '<div class="row"><button class="primary" id="startBtn" type="button">Start game</button><span class="small muted" id="lobbyNote"></span></div>'
+    :'<p class="muted" id="lobbyNote"></p>')+
+  '</section>';
+  if(online&&typeof QRCode!=="undefined"){try{new QRCode($("#qr"),{text:url,width:150,height:150,correctLevel:QRCode.CorrectLevel.M})}catch(e){$("#qr").hidden=true}}
+  else $("#qr").hidden=true;
+  if(isHost){
+    $("#lrounds").onchange=function(e){act({t:"settings",rounds:+e.target.value,secs:V.secs})};
+    $("#lsecs").onchange=function(e){act({t:"settings",rounds:V.rounds,secs:+e.target.value})};
+    $("#startBtn").onclick=function(){act({t:"start"})};
+  }
+}
+function updateLobby(){
+  var s=V,n=s.players.length,note=$("#lobbyNote");
+  if(role==="host"){
+    if(document.activeElement!==$("#lrounds"))$("#lrounds").value=String(s.rounds);
+    if(document.activeElement!==$("#lsecs"))$("#lsecs").value=String(s.secs);
+    note.textContent=n<2?"You can play alone, but voting needs at least 2 players.":n+" players in the room.";
+  } else {
+    var host=s.players.filter(function(p){return p.id===s.host})[0];
+    note.textContent="Waiting for "+(host?host.name:"the host")+" to start the game ("+s.rounds+" rounds, "+s.secs+" seconds each).";
+  }
+}
+
+function buildAnswer(){
+  var s=V,k=key();
+  if(L.ansKey!==k){L.ansKey=k;var saved=null;try{saved=JSON.parse(sessionStorage.getItem("wao_a_"+s.code+"_"+k)||"null")}catch(e){}L.myAns=Array.isArray(saved)?saved:["","","","",""]}
+  $("#body").innerHTML='<div class="prompts">'+s.prompts.map(function(p,i){return '<section class="sheet pcard"><span class="pnum">'+(i+1)+'</span>'+
+    '<span class="cat">'+esc(p.cat)+'</span><div class="ptext">'+esc(p.text)+'</div><span class="rule '+(p.plain?"plain":"cond")+'">'+esc(ruleText(p))+'</span>'+
+    '<input type="text" class="ansin" id="ans-'+i+'" maxlength="80" autocomplete="off" autocapitalize="off" placeholder="your wrong answer" value="'+esc(L.myAns[i])+'" aria-label="Answer '+(i+1)+'"></section>'}).join("")+'</div>';
+  markDupes();
+  s.prompts.forEach(function(p,i){
+    var el=$("#ans-"+i);
+    el.addEventListener("input",function(e){
+      L.myAns[i]=e.target.value.slice(0,80);
+      try{sessionStorage.setItem("wao_a_"+V.code+"_"+L.ansKey,JSON.stringify(L.myAns))}catch(x){}
+      clearTimeout(L.ansTimer);L.ansTimer=setTimeout(function(){L.ansTimer=null;sendAnswers()},600);
+      markDupes();updateStop();
+    });
+    el.addEventListener("change",function(){checkDupOnLeave(i)});
+    el.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();var nx=$("#ans-"+(i+1));if(nx)nx.focus();else pressStop()}});
+  });
+  if(L.myAns.some(function(a){return a}))sendAnswers();
+}
+function updateStop(){
+  var b=$("#stopBtn"),answering=V.phase==="answer";
+  document.querySelectorAll(".ansin").forEach(function(el){el.disabled=!answering});
+  if(!b||!L.myAns)return;
+  var filled=L.myAns.every(function(a){return a.trim()})&&answering;
+  b.disabled=!filled;b.title=!filled?"Fill in all five answers first":dupIdx().length?"Some answers are repeats":"End the round for everyone";
+}
+function pressStop(){
+  if(!L.myAns.every(function(a){return a.trim()})){toast("Fill in every answer before you can call STOP.");return}
+  var d=dupIdx();if(d.length){L.dupShownFor="";showDupPop(d[d.length-1]);return}
+  clearTimeout(L.ansTimer);L.ansTimer=null;sendAnswers();
+  act({t:"stop",game:V.game,round:V.round});
+}
+
+function buildVote(){
+  var s=V,k=key();
+  if(L.voteKey!==k){L.voteKey=k;L.myVote={reject:{},funny:{},done:false}}
+  var html=s.prompts.map(function(p,i){
+    var list=(s.answers[i]||[]).slice().sort(function(a,b){return hash(a.pid+k+i)-hash(b.pid+k+i)});
+    var items=list.map(function(a){
+      var mine=a.pid===ME.id,kk=a.pid+"|"+i,bad=!!L.myVote.reject[kk],star=L.myVote.funny[i]===a.pid;
+      return '<li><div><div class="atext">'+esc(a.text)+'</div>'+(mine?'<div class="who">your answer</div>':'')+'</div>'+
+        (mine?'':'<div class="vctl"><button type="button" class="tog '+(bad?"bad":"okay")+'" data-rej="'+esc(kk)+'" aria-pressed="'+bad+'">'+(bad?"✗ Breaks the rule":"✓ Follows the rule")+'</button>'+
+        '<button type="button" class="tog star" data-star="'+i+'" data-pid="'+esc(a.pid)+'" aria-pressed="'+star+'">★ Funniest</button></div>')+'</li>';
+    }).join("");
+    return '<section class="sheet pcard"><span class="pnum">'+(i+1)+'</span><span class="cat">'+esc(p.cat)+'</span><div class="ptext">'+esc(p.text)+'</div>'+
+      '<span class="rule '+(p.plain?"plain":"cond")+'">'+esc(ruleText(p))+'</span>'+(items?'<ul class="vlist">'+items+'</ul>':'<p class="empty">Nobody answered this one.</p>')+'</section>';
+  }).join("");
+  $("#body").innerHTML='<div class="stack"><section class="sheet pad"><h2>Judge the wrongness</h2><p class="muted">Mark any answer that doesn\'t follow its rule, and star the funniest answer for each prompt. Names stay hidden until the scores come out.</p></section><div class="prompts">'+html+'</div></div>';
+  function changed(){clearTimeout(L.voteTimer);L.voteTimer=setTimeout(sendVote,300);buildVote()}
+  $("#body").querySelectorAll("[data-rej]").forEach(function(b){b.onclick=function(){var x=b.dataset.rej;if(L.myVote.reject[x])delete L.myVote.reject[x];else L.myVote.reject[x]=true;changed()}});
+  $("#body").querySelectorAll("[data-star]").forEach(function(b){b.onclick=function(){var i=b.dataset.star;if(L.myVote.funny[i]===b.dataset.pid)delete L.myVote.funny[i];else L.myVote.funny[i]=b.dataset.pid;changed()}});
+}
+
+function boardHTML(){
+  var ps=V.players.slice().sort(function(a,b){return b.score-a.score}),place=0,prev=null;
+  return '<ol class="board">'+ps.map(function(p,i){if(p.score!==prev){place=i+1;prev=p.score}return '<li class="'+(place===1?"first":"")+'"><span class="place">'+place+'</span><span class="nm">'+esc(p.name)+(p.id===ME.id?" (you)":"")+'</span><span class="sc">'+p.score+'</span></li>'}).join("")+'</ol>';
+}
+function buildResults(){
+  var s=V,R=s.results||{rows:[],totals:{}},isHost=role==="host",last=s.round>=s.rounds;
+  var sec=s.prompts.map(function(p,i){
+    var pr=R.rows.filter(function(x){return x.i===i}).sort(function(a,b){return b.pts-a.pts});
+    return '<section class="sheet pcard"><span class="pnum">'+(i+1)+'</span><span class="cat">'+esc(p.cat)+'</span><div class="ptext">'+esc(p.text)+'</div>'+
+      (pr.length?'<ul class="vlist">'+pr.map(function(x){return '<li><div><div class="atext '+(x.out?"out":"")+'">'+esc(x.text)+'</div><div class="who">'+esc(x.name)+(x.funny?" · "+x.funny+" funny vote"+(x.funny>1?"s":""):"")+'</div></div>'+
+        '<div class="vctl">'+(x.top?'<span class="stamp top">FUNNIEST</span>':'')+(x.out?'<span class="stamp out">RULE BROKEN</span>':'<span class="stamp ok">WRONG!</span>')+'<span class="pts">+'+x.pts+'</span></div></li>'}).join("")+'</ul>':'<p class="empty">No answers.</p>')+'</section>';
+  }).join("");
+  var host=s.players.filter(function(p){return p.id===s.host})[0];
+  $("#body").innerHTML='<div class="split"><div class="prompts" style="grid-template-columns:1fr">'+sec+'</div>'+
+    '<aside class="sheet pad stack"><h2>Round '+s.round+' points</h2><ol class="board">'+s.players.slice().sort(function(a,b){return (R.totals[b.id]||0)-(R.totals[a.id]||0)}).map(function(p){return '<li><span class="place">+</span><span class="nm">'+esc(p.name)+'</span><span class="sc">'+(R.totals[p.id]||0)+'</span></li>'}).join("")+'</ol>'+
+    '<h2>Game so far</h2>'+boardHTML()+
+    (isHost?'<button class="primary" id="nextBtn" type="button">'+(last?"See final scores":"Next round")+'</button>':'<p class="muted small">Waiting for '+esc(host?host.name:"the host")+' to continue.</p>')+
+    '</aside></div>';
+  if(isHost)$("#nextBtn").onclick=function(){act({t:last?"final":"start"})};
+}
+function buildFinal(){
+  var s=V,isHost=role==="host",b=s.best,host=s.players.filter(function(p){return p.id===s.host})[0];
+  $("#body").innerHTML='<div class="split"><section class="sheet margin stack"><h2>Final scores</h2>'+boardHTML()+
+    '<div class="row">'+(isHost?'<button class="primary" id="againBtn" type="button">Play again in this room</button>':'<span class="muted small">'+esc(host?host.name:"The host")+' can start another game.</span>')+'</div></section>'+
+    '<section class="sheet pad stack"><h2>Funniest answer of the game</h2>'+
+    (b?'<div class="best"><div class="atext">'+esc(b.text)+'</div><div class="who">'+esc(b.name)+' · round '+b.round+' · '+b.funny+' funny vote'+(b.funny>1?"s":"")+'</div></div>':'<p class="empty">No funny votes this game. Tough crowd.</p>')+
+    '</section></div>';
+  if(isHost)$("#againBtn").onclick=function(){act({t:"again"})};
+}
+
+/* resume or auto-join */
+document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible"&&role==="player"&&lastState&&Date.now()-lastState>8000)playerConnect(pB)});
+render();
+})();
+</script>
+</body>
+</html>
