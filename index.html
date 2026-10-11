@@ -195,6 +195,7 @@ button:hover:not(:disabled){transform:translateY(-1px) rotate(-1.2deg)}
 mark{background:linear-gradient(100deg,transparent 2%,var(--hi) 4%,var(--hi) 96%,transparent 98%);color:var(--hi-ink);padding:0 .15em;border-radius:3px}
 .conds{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-weight:600;font-size:.95rem}
 .conds li{display:grid;grid-template-columns:1.1em minmax(0,1fr);gap:8px;align-items:baseline}
+.conds.many{grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));column-gap:14px;font-size:.88rem}
 .conds li::before{content:"";width:.85em;height:.85em;border:2px solid var(--muted);border-radius:3px;transform:translateY(.12em) rotate(-4deg)}
 .pcard.deal{opacity:0;transform:translate(60px,-120px) rotate(18deg) scale(.85);pointer-events:none}
 .pcard.dealt{animation:dealIn .55s cubic-bezier(.2,1.5,.45,1) both}
@@ -211,6 +212,7 @@ mark{background:linear-gradient(100deg,transparent 2%,var(--hi) 4%,var(--hi) 96%
 .lb{position:absolute;left:0;right:0;height:0;background:#000;z-index:2;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:lbIn .4s cubic-bezier(.3,0,.2,1) forwards}
 .lb.top{top:0}.lb.bot{bottom:0}
 @keyframes lbIn{to{height:9vh}}
+.cinema.out{opacity:0;transition:opacity .45s ease}
 .lb.bot{gap:12px;padding-inline:16px;justify-content:space-between}
 .roll{flex:1;min-width:0;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
 .roll span{display:inline-block;padding-left:100%;font:600 .68rem/1.2 var(--body);letter-spacing:.22em;text-transform:uppercase;color:#9aa0b0;animation:roll 16s linear 4.2s forwards}
@@ -298,10 +300,13 @@ function cleanName(s){return String(s||"").replace(/\s+/g," ").trim().slice(0,18
 var normAns=function(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/^\s*(a|an|the)\s+/,"").replace(/\s+/g," ").trim()};
 
 /* ---- conditions: 0 to 10 per prompt. 0 = plain prompt (don't name one). ---- */
-var MAX_CONDS=10;
+var MAX_CONDS=20;
 var VIBES=["would survive a zombie apocalypse","your grandma has heard of","fits in a shoebox","sounds completely made up","would make a good name for a dog",
   "is sold at a gas station","could beat a goose in a fight","is cooler than it sounds","a pirate would want","you'd bring to a sleepover",
-  "is suspiciously shiny","would win a staring contest","you could hear from space","a toddler could spell","smells a little weird","is famous in Canada"];
+  "is suspiciously shiny","would win a staring contest","you could hear from space","a toddler could spell","smells a little weird","is famous in Canada",
+  "your dentist would approve of","is legally a sandwich","fits in a microwave","was invented after 1990","has been to space","is louder than a lawnmower",
+  "a cat would knock off a table","you'd find in a museum gift shop","would get you kicked out of a library","rhymes with \"cheese\"","a medieval peasant would recognize",
+  "is mentioned in at least one country song","you could carry up a ladder","would be weird to receive as a gift"];
 function pick(a){return a[rnd(a.length)]}
 function spellingConds(){
   return [
@@ -309,18 +314,27 @@ function spellingConds(){
     pick(["ends with a vowel","ends with the letter "+pick("NRSTLY".split(""))]),
     pick(["contains the letter "+pick("AIOURSTK".split("")),"has no letter E in it"]),
     "has a double letter, like \"oo\" or \"ll\"",
-    pick(["is one word","is two or more words"])
+    pick(["is one word","is two or more words"]),
+    pick(["starts with a vowel","starts with a consonant"]),
+    pick(["has an even number of letters","has an odd number of letters"]),
+    pick(["has at least three vowels","has no letter A in it"]),
+    "is spelled the same backwards",
+    "has a letter that shows up three times",
+    "contains a silent letter",
+    pick(["has exactly two syllables","has more than three syllables"])
   ];
 }
-function pickCount(){ // mostly small, sometimes ridiculous
+function pickCount(){ // mostly small, sometimes ridiculous, very occasionally a legal document
   var r=Math.random();
-  return r<.12?0:r<.30?1:r<.50?2:r<.65?3:r<.75?4:r<.82?5:r<.87?6:r<.91?7:r<.94?8:r<.97?9:10;
+  if(r<.12)return 0;if(r<.30)return 1;if(r<.48)return 2;if(r<.62)return 3;if(r<.72)return 4;if(r<.79)return 5;if(r<.84)return 6;if(r<.88)return 7;
+  if(r<.91)return 8+rnd(3);   // 8-10
+  return 11+rnd(10);          // 11-20
 }
 function makePrompts(letter){
   var cats=shuffle(CATS.slice()).slice(0,ANS);
   var counts=cats.map(pickCount);
   counts[rnd(ANS)]=0;                                  // every round has at least one plain prompt
-  if(Math.random()<.3){var j=rnd(ANS);if(counts[j]!==0||counts.filter(function(n){return !n}).length>1)counts[j]=8+rnd(3)} // the occasional monster
+  if(Math.random()<.3){var j=rnd(ANS);if(counts[j]!==0||counts.filter(function(n){return !n}).length>1)counts[j]=10+rnd(11)} // the occasional monster (10-20)
   return cats.map(function(c,i){
     var n=Math.min(MAX_CONDS,counts[i]);
     if(!n){
@@ -332,8 +346,11 @@ function makePrompts(letter){
     var prep=c.p.length&&Math.random()<.5?pick(c.p):"";
     var left=n-(prep?1:0),conds=[];
     if(left>0&&Math.random()<.75){conds.push("starts with the letter "+letter);left--}
-    var pool=shuffle(c.c.slice().concat(spellingConds(),shuffle(VIBES.slice()).slice(0,4)));
-    conds=conds.concat(pool.slice(0,left));
+    // small counts lean on category and spelling conditions; big counts pull in the silly ones too
+    var core=shuffle(c.c.slice().concat(spellingConds())),silly=shuffle(VIBES.slice());
+    var pool=left<=6?shuffle(core.slice(0,8).concat(silly.slice(0,3))):core.concat(silly);
+    var seen={};conds.forEach(function(x){seen[x]=1});
+    pool.forEach(function(x){if(left>0&&!seen[x]){seen[x]=1;conds.push(x);left--}});
     return {cat:c.n,a:c.a,plain:false,prep:prep,conds:conds};
   });
 }
@@ -345,24 +362,26 @@ function ruleText(p){
 }
 function countLabel(n){
   if(!n)return "No conditions";
+  if(n>=16)return n+" conditions. Seek help.";
+  if(n>=11)return n+" conditions?!?!";
   if(n>=8)return n+" conditions?!";
   if(n>=5)return n+" conditions. Good luck.";
   return n+" condition"+(n>1?"s":"");
 }
 var TILTS=[-0.9,0.7,-0.5,1,-0.7];
-function promptHTML(p,i,extra,cls){
+function promptHTML(p,i,extra,cls,hideRule){ // hideRule: answering is on your own; the rule shows up later for the judges
   var n=condCount(p),conds=p.conds||[];
   return '<section class="sheet pcard '+(cls||"")+'" style="--tilt:'+TILTS[i%5]+'deg"><span class="pnum">'+(i+1)+'</span>'+
     '<div class="ptop"><span class="cat">'+esc(p.cat)+'</span><span class="ccount'+(n>=8?" monster":n?"":" zero")+'">'+esc(countLabel(n))+'</span></div>'+
     '<div class="ptext">Name '+esc(p.a)+(p.prep?' <mark>'+esc(p.prep)+'</mark>':'')+(conds.length?' that…':'.')+'</div>'+
-    (conds.length?'<ul class="conds">'+conds.map(function(c){return '<li>'+esc(c)+'</li>'}).join("")+'</ul>':'')+
-    '<span class="rule '+(n?"cond":"plain")+'">'+esc(ruleText(p))+'</span>'+(extra||"")+'</section>';
+    (conds.length?'<ul class="conds'+(conds.length>8?" many":"")+'">'+conds.map(function(c){return '<li>'+esc(c)+'</li>'}).join("")+'</ul>':'')+
+    (hideRule?'':'<span class="rule '+(n?"cond":"plain")+'">'+esc(ruleText(p))+'</span>')+(extra||"")+'</section>';
 }
 
 /* ================= silliness ================= */
 var REDUCED=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 var ROLL_MS=1100, CARD_MS=650, DEAL_MS=ROLL_MS+CARD_MS*ANS+400; // the host adds DEAL_MS to the round clock
-var PLACEHOLDERS=["lie to me","something gloriously wrong","confidently incorrect","wrong, but make it funny","your worst idea","a lie, with style","be brave. be wrong.","trust your gut. ignore it."];
+var PLACEHOLDERS=["lie to me","gloriously wrong","confidently incorrect","wrong, but make it funny","your worst idea","a lie, with style","be brave. be wrong.","trust your gut. ignore it."];
 var OK_STAMPS=["WRONG!","SO WRONG","PERFECTLY WRONG","WRONG ✓","CERTIFIED WRONG"];
 var TAGLINES=["a race to be incorrect, judged by your friends","certified 100% wrong since today","the quiz show your teacher warned you about","being right has never been this embarrassing","where the dumbest answer wins (the funniest one, actually)"];
 var SILLY_NAMES=["Sir Wrongsalot","Captain Incorrect","Professor Nope","Dr. Not Quite","Lil' Mistake","The Misinformant","Baron von Blunder","Agent Oops","Count Errorula","Duchess of Duh","Wrong Way Wanda","Major Whoopsie","Clueless Carl","Big Brain Barry"];
@@ -1133,6 +1152,7 @@ function buildState(forWire){
   if(H.phase==="answer"||H.phase==="vote"){
     if(forWire) s.timeLeft=Math.max(0,H.deadline-now); else s.deadlineLocal=H.deadline;
   }
+  if(H.phase==="stopping")s.stopAge=now-H.stopAt; // devices that arrive very late skip the trailer
   if(H.phase==="vote") s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return (A[pid][i]||"").trim()}).map(function(pid){return {pid:pid,text:A[pid][i].trim()}})});
   if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals}}
   if(H.phase==="final"){
@@ -1280,6 +1300,7 @@ function checkDupOnLeave(i){var d=dupIdx();if(d.indexOf(i)<0||normAns(L.myAns[i]
 
 /* ================= render ================= */
 function render(){
+  if(!role||!V||V.phase==="closed")killCinema();
   if(!role) return renderHome();
   if(!V||V.phase==="closed") return renderWaiting();
   renderRoom();
@@ -1298,7 +1319,7 @@ function renderHome(){
     '<section class="sheet margin stack" aria-label="How it works">'+
      '<h2>How a round works</h2>'+
      '<p>Everyone gets the same letter and five prompts, dealt one at a time. Fill in all five as wrongly as possible, then slam <b>STOP</b> to end the round for everybody. Then you all judge each other. It gets personal.</p>'+
-     '<p class="small">Each prompt has <b>0 to 10 conditions</b>. No conditions? Name anything <i>except</i> that thing. Got conditions? Name the real thing, but break <i>every single one</i>.</p>'+
+     '<p class="small">Each prompt has <b>0 to 20 conditions</b>. You won\'t get a reminder of the rule while you answer. No conditions? Name anything <i>except</i> that thing. Got conditions? Name the real thing, but break <i>every single one</i>.</p>'+
      '<div>'+
       '<div class="ex"><div class="ptxt">Name a fruit.</div><span class="rule plain">Plain prompt: anything that isn\'t a fruit.</span>'+
        '<div class="marks"><span class="mark y"><b>✓</b>a trombone</span><span class="mark y"><b>✓</b>my uncle\'s boat</span><span class="mark n"><b>✗</b>banana</span></div></div>'+
@@ -1395,23 +1416,10 @@ function renderRoom(){
 
   var ex=$("#extra");
   if(phase==="stopping"){
-    if(ex.dataset.k!=="stop"){
-      ex.dataset.k="stop";
-      ex.innerHTML='<div class="overlay cinema" role="alert"><canvas class="cine" aria-hidden="true"></canvas>'+
-        '<div class="lb top"></div><div class="lb bot"><div class="roll"><span>'+CREDITS.map(esc).join(" &nbsp;·&nbsp; ")+'</span></div>'+
-        '<button class="skip mute" type="button" aria-pressed="'+!soundOn+'">'+(soundOn?"Mute":"Unmute")+'</button><button class="skip" type="button">Skip ›</button></div>'+
-        '<div class="cinecap"><div class="h">'+(s.stoppedBy?esc(s.stoppedBy)+" slammed the brakes!":"Time's up, slowpokes!")+'</div><div class="sub">'+esc(pick(STOP_SUBS))+'</div></div></div>';
-      var mute=ex.querySelector(".mute");
-      mute.onclick=function(){
-        soundOn=!soundOn;LS.set("wao_sound",soundOn?"1":"0");unlockAudio();
-        if(!soundOn&&currentScore){currentScore.stop();currentScore=null}
-        mute.textContent=soundOn?"Mute":"Unmute";mute.setAttribute("aria-pressed",!soundOn);
-        var sb=$("#sndBtn");if(sb){sb.textContent=soundBtnLabel();sb.setAttribute("aria-pressed",soundOn)}
-      };
-      var skipN=0,skip=ex.querySelector(".skip:not(.mute)");
-      skip.onclick=function(){skip.textContent=NO_SKIP[skipN++%NO_SKIP.length];sfx("boing")};
-      stopCinematic(ex.querySelector(".cinema"));
-    }
+    if(ex.dataset.k!=="stop"){ex.dataset.k="stop";ex.innerHTML=""}
+    // The trailer runs on this device's own clock and outlives the phase change, so a device
+    // that heard about the STOP a beat late still gets the whole thing (voting loads underneath).
+    if(L.cineKey!==key()){L.cineKey=key();if(!(s.stopAge>4000))playTrailer(s)}
   } else if(phase==="answer"||phase==="vote"){
     if(ex.dataset.k!==phase){
       ex.dataset.k=phase;
@@ -1423,6 +1431,28 @@ function renderRoom(){
     if(phase==="vote"){var b=$("#doneBtn");if(b&&L.myVote)b.textContent=L.myVote.done?"Judged ✓ (tap to un-judge)":"I've judged enough"}
     updateTimer();
   } else {ex.innerHTML="";ex.dataset.k=""}
+}
+var CINE_MS=9600; // how long the trailer stays up on each device, from the moment that device starts it
+function killCinema(){if(L.cineEl){L.cineEl.remove();L.cineEl=null}clearTimeout(L.cineT)}
+function playTrailer(s){
+  killCinema();
+  var holder=document.createElement("div");
+  holder.innerHTML='<div class="overlay cinema" role="alert"><canvas class="cine" aria-hidden="true"></canvas>'+
+    '<div class="lb top"></div><div class="lb bot"><div class="roll"><span>'+CREDITS.map(esc).join(" &nbsp;·&nbsp; ")+'</span></div>'+
+    '<button class="skip mute" type="button" aria-pressed="'+!soundOn+'">'+(soundOn?"Mute":"Unmute")+'</button><button class="skip" type="button">Skip ›</button></div>'+
+    '<div class="cinecap"><div class="h">'+(s.stoppedBy?esc(s.stoppedBy)+" slammed the brakes!":"Time's up, slowpokes!")+'</div><div class="sub">'+esc(pick(STOP_SUBS))+'</div></div></div>';
+  var el=holder.firstChild;document.body.appendChild(el);L.cineEl=el;
+  var mute=el.querySelector(".mute");
+  mute.onclick=function(){
+    soundOn=!soundOn;LS.set("wao_sound",soundOn?"1":"0");unlockAudio();
+    if(!soundOn&&currentScore){currentScore.stop();currentScore=null}
+    mute.textContent=soundOn?"Mute":"Unmute";mute.setAttribute("aria-pressed",!soundOn);
+    var sb=$("#sndBtn");if(sb){sb.textContent=soundBtnLabel();sb.setAttribute("aria-pressed",soundOn)}
+  };
+  var skipN=0,skip=el.querySelector(".skip:not(.mute)");
+  skip.onclick=function(){skip.textContent=NO_SKIP[skipN++%NO_SKIP.length];sfx("boing")};
+  stopCinematic(el);
+  L.cineT=setTimeout(function(){el.classList.add("out");setTimeout(function(){el.remove();if(L.cineEl===el)L.cineEl=null},500)},CINE_MS);
 }
 function updateTimer(){
   var s=V,el=$("#secs");if(!s||!el||!s.deadlineLocal)return;
@@ -1479,7 +1509,7 @@ function buildAnswer(){
   L.dealtKey=k;
   var holders=shuffle(PLACEHOLDERS.slice());
   $("#body").innerHTML='<div class="prompts">'+s.prompts.map(function(p,i){
-    return promptHTML(p,i,'<input type="text" class="ansin" id="ans-'+i+'" maxlength="80" autocomplete="off" autocapitalize="off" placeholder="'+esc(holders[i])+'" value="'+esc(L.myAns[i])+'" aria-label="Answer '+(i+1)+'">',fresh?"deal":"");
+    return promptHTML(p,i,'<input type="text" class="ansin" id="ans-'+i+'" maxlength="80" autocomplete="off" autocapitalize="off" placeholder="'+esc(holders[i])+'" value="'+esc(L.myAns[i])+'" aria-label="Answer '+(i+1)+'">',fresh?"deal":"",true);
   }).join("")+'</div>';
   if(fresh)rollThenDeal(s.letter);
   markDupes();
