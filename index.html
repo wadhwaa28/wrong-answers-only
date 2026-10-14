@@ -520,16 +520,16 @@ var CATS=[
   items:["rose|1|red thorns strong","tulip|2|asia","sunflower|0|cool","daisy|2","lotus|2|asia cool wiz","cherry blossom|4|tree asia","magnolia|0|tree strong",
    "lavender|3|strong","poppy|2|red","jasmine|2|strong asia","dandelion|4|wiz","lily|2|strong","bougainvillea|0|thorns fake wiz",
    "chrysanthemum|4|asia fake wiz","corpse flower|0|strong fake lib date wgift"]},
- {n:"Insect",a:"an insect",sub:["a flying insect","a garden bug"],
+ {n:"Insect",no:["box","micro"],a:"an insect",sub:["a flying insect","a garden bug"],
   f:{glow:"glows",colony:"lives in a colony",coin:"is bigger than a coin"},p:{stripes:"with stripes",stinger:"with a stinger"},
-  items:["bee|1|colony stripes stinger","ant|1|colony box","firefly|0|glow cool box","wasp|1|stripes stinger","termite|2|colony","butterfly|3|coin cool box",
-   "ladybug|3|box cool","mosquito|3|date","beetle|2|box","cockroach|2|zom","praying mantis|4|coin stare cool","grasshopper|3|coin","cricket|2|box",
+  items:["bee|1|colony stripes stinger","ant|1|colony","firefly|0|glow cool","wasp|1|stripes stinger","termite|2|colony","butterfly|3|coin cool",
+   "ladybug|3|cool","mosquito|3|date","beetle|2","cockroach|2|zom","praying mantis|4|coin stare cool","grasshopper|3|coin","cricket|2",
    "dragonfly|3|coin cool","hornet|2|colony stinger stripes","stick insect|3|coin fake cool"]},
- {n:"Candy",a:"a candy",sub:["a chocolate bar","a chewy candy"],
+ {n:"Candy",no:["box","micro","gas"],a:"a candy",sub:["a chocolate bar","a chewy candy"],
   f:{sour:"is sour",wrap:"comes in a wrapper",choc:"is chocolate"},p:{nuts:"with nuts",theater:"from a movie theater"},
-  items:["Creme Egg|2|choc wrap","Skittles|2|wrap gas theater box","Snickers|2|nuts wrap gas box choc","lollipop|3|wrap box","gummy bears|3|theater box",
-   "Sour Patch Kids|0|sour theater gas","candy corn|3","jawbreaker|3|box","Kit Kat|2|wrap gas box choc","cotton candy|4|fake cool",
-   "toffee|2|wrap box","licorice|3|theater","Pez|1|box cool fake","Milk Duds|2|theater choc","Warheads|2|sour wrap","Junior Mints|3|theater choc"]},
+  items:["Creme Egg|2|choc wrap","Skittles|2|wrap theater","Snickers|2|nuts wrap choc","lollipop|3|wrap","gummy bears|3|theater",
+   "Sour Patch Kids|0|sour theater","candy corn|3","jawbreaker|3","Kit Kat|2|wrap choc","cotton candy|4|fake cool",
+   "toffee|2|wrap","licorice|3|theater","Pez|1|cool fake","Milk Duds|2|theater choc","Warheads|2|sour wrap","Junior Mints|3|theater choc"]},
  {n:"Mythical creature",a:"a mythical creature",sub:["a sea monster","a kind of dragon"],
   f:{fire:"breathes fire",under:"lives underground",friendly:"is friendly"},p:{wings:"with wings",heads:"with more than one head",greek:"from Greek myths"},
   items:["dragon|2|fire wings peas goose zom stare","hydra|2|heads greek","unicorn|3|friendly cool","Cerberus|3|heads greek","troll|1|under goose stare",
@@ -643,8 +643,8 @@ function spellFacts(it){
   add("cons","has exactly "+(NUMW[nc]||nc)+" consonant"+(nc===1?"":"s"));
   return out;
 }
-function vibesOf(it){
-  var t=it.tags,v=t.filter(function(x){return VIBE[x]&&x!=="tod"}).map(function(x){return VIBE[x]});
+function vibesOf(it,c){
+  var t=it.tags,v=t.filter(function(x){return VIBE[x]&&x!=="tod"&&!(c&&c.no&&c.no.indexOf(x)>=0)}).map(function(x){return VIBE[x]});
   var L=lettersOf(it.name);if(/^[a-z]+$/i.test(it.name)&&L.length<=4)v.push(VIBE.tod);
   return v;
 }
@@ -663,7 +663,7 @@ function buildConds(c,it,n){ // n conditions (phrase condition included), all tr
   shuffle(spellFacts(it)).forEach(function(x){var u=used[x.g]||0;
     if(solo[x.g]||(x.x&&u)||u>=(CAP[x.g]||1))return;
     used[x.g]=u+1;if(x.x)solo[x.g]=1;spell.push(x.t)});
-  var silly=shuffle(vibesOf(it));
+  var silly=shuffle(vibesOf(it,c)); // (minus any the category rules out: every insect fits in a shoebox)
   // small counts lean on category and spelling conditions; big counts pull in everything
   var pool=left<=6?facts.concat(shuffle(spell.slice(0,6).concat(silly.slice(0,2)))):facts.concat(spell,silly);
   if(left<=6)pool=facts.slice(0,2).concat(shuffle(facts.slice(2).concat(pool.slice(facts.length))));
