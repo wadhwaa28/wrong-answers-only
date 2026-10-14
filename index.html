@@ -321,36 +321,36 @@ var TOPIC="wrong-answers-only/v2/";
 /* a: the base thing. sub: narrower kinds used only as plain prompts ("Name a superhero movie." = one category, no conditions).
    p: conditions phrased right after the noun ("a movie about a superhero"). c: "that ..." conditions. */
 var CATS=[
- {n:"Fruit",a:"a fruit",sub:["a tropical fruit","a citrus fruit","a dried fruit"],p:["from Asia","with fuzzy skin"],c:["is red","grows on trees","is smaller than a golf ball"]},
- {n:"Animal",a:"an animal",sub:["a farm animal","a sea animal","a jungle animal"],p:["with stripes","from Australia","with no legs"],c:["can fly","is a mammal","weighs less than a cat","lives in the ocean"]},
- {n:"Country",a:"a country",sub:["a European country","an island country"],p:["in Europe","in the Southern Hemisphere","with red on its flag"],c:["is landlocked","has more than 50 million people","has hosted the Olympics"]},
- {n:"Food",a:"a food",sub:["a breakfast food","a dessert","a fast food"],p:["from Italy","with cheese in it"],c:["is spicy","is eaten with chopsticks","is served cold","is deep fried"]},
- {n:"Job",a:"a job",sub:["a medical job","an office job"],p:["with a uniform","in a hospital"],c:["is done outdoors","needs a college degree","is done at night"]},
- {n:"Movie",a:"a movie",sub:["a superhero movie","a horror movie","an animated movie","a Christmas movie"],p:["about a superhero","about a dog","about space","with a talking animal"],c:["came out before 2000","won Best Picture","has a sequel"]},
- {n:"Vegetable",a:"a vegetable",sub:["a leafy vegetable","a root vegetable"],p:["with a strong smell"],c:["is green","grows underground","is usually eaten raw","is orange"]},
- {n:"Sport",a:"a sport",sub:["a winter sport","a water sport","a team sport"],p:["with a ball","with a racket"],c:["is in the Summer Olympics","is played on ice","is played in teams"]},
- {n:"City",a:"a city",sub:["a capital city","a beach city"],p:["in Asia","in the United States","on the coast"],c:["is a capital","has more than a million people"]},
- {n:"Body part",a:"a body part",sub:["a body part on your face"],p:["with a bone in it"],c:["you have two of","is above the neck","you can see right now"]},
- {n:"Kitchen",a:"something in a kitchen",sub:["a kitchen appliance","a cooking utensil"],p:["made of metal","with a plug"],c:["is sharp","fits in a drawer"]},
- {n:"Drink",a:"a drink",sub:["a hot drink","a cocktail","a soft drink"],p:["with bubbles","made from fruit"],c:["has alcohol in it","is served hot"]},
- {n:"Instrument",a:"a musical instrument",sub:["a string instrument","a brass instrument"],p:["with strings","with keys"],c:["you blow into","is in an orchestra","is smaller than a backpack"]},
- {n:"Furniture",a:"a piece of furniture",sub:["a piece of office furniture","a piece of garden furniture"],p:["with legs","with drawers"],c:["you can sleep on","usually lives in a bedroom"]},
- {n:"First name",a:"a first name",sub:["a boy's name","a girl's name","a dog's name"],p:["from the Bible"],c:["is popular in Spain","sounds old-fashioned"]},
- {n:"Clothing",a:"a piece of clothing",sub:["a piece of winter clothing","a piece of swimwear"],p:["with buttons","for your feet"],c:["gets worn at weddings","is usually black"]},
- {n:"Vehicle",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],p:["with two wheels","on rails"],c:["seats more than ten people","is faster than a horse"]},
- {n:"Hobby",a:"a hobby",sub:["an outdoor hobby","an expensive hobby"],p:[],c:["is done alone","needs special equipment","is quiet"]},
- {n:"Bird",a:"a bird",sub:["a bird of prey","a pet bird"],p:["with a long beak"],c:["can't fly","lives near water","is bigger than a chicken","is mostly black"]},
- {n:"Toy",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]},
- {n:"Holiday",a:"a holiday",sub:["a winter holiday","a made-up holiday"],p:["in the summer","with presents"],c:["involves fireworks","you get the day off for","has its own songs"]},
- {n:"Tool",a:"a tool",sub:["a power tool","a garden tool"],p:["with a handle","with a blade"],c:["needs electricity","fits in a pocket","is used on wood"]},
- {n:"Building",a:"a building",sub:["a famous building","a building on a farm"],p:["in Europe","with a dome"],c:["is taller than ten floors","people live in","is open at night"]},
- {n:"School subject",a:"a school subject",sub:["a science class","an elective class"],p:["with homework","with a lab"],c:["involves numbers","is taught outdoors","everyone secretly likes"]},
- {n:"Dance",a:"a dance",sub:["a ballroom dance","a dance from the 70s"],p:["for two people","with a famous song"],c:["is done in a line","involves jumping","is from Latin America"]},
- {n:"Flower",a:"a flower",sub:["a wildflower","a wedding flower"],p:["with thorns","from Asia"],c:["is red","grows on a tree","smells strong"]},
- {n:"Insect",a:"an insect",sub:["a flying insect","a garden bug"],p:["with stripes","with a stinger"],c:["glows","lives in a colony","is bigger than a coin"]},
- {n:"Candy",a:"a candy",sub:["a chocolate bar","a chewy candy"],p:["with nuts","from a movie theater"],c:["is sour","comes in a wrapper","is sold at Halloween"]},
- {n:"Mythical creature",a:"a mythical creature",sub:["a sea monster","a creature from Greek myths"],p:["with wings","with more than one head"],c:["breathes fire","lives underground","is friendly"]},
- {n:"Weather",a:"a kind of weather",sub:["a kind of storm"],p:["with lightning","in the winter"],c:["is wet","can knock down a tree","happens in deserts"]}
+ {n:"Fruit",k:"obj",a:"a fruit",sub:["a tropical fruit","a citrus fruit","a dried fruit"],p:["from Asia","with fuzzy skin"],c:["is red","grows on trees","is smaller than a golf ball"]},
+ {n:"Animal",k:"life",a:"an animal",sub:["a farm animal","a sea animal","a jungle animal"],p:["with stripes","from Australia","with no legs"],c:["can fly","is a mammal","weighs less than a cat","lives in the ocean"]},
+ {n:"Country",k:"place",a:"a country",sub:["a European country","an island country"],p:["in Europe","in the Southern Hemisphere","with red on its flag"],c:["is landlocked","has more than 50 million people","has hosted the Olympics"]},
+ {n:"Food",k:"obj",a:"a food",sub:["a breakfast food","a dessert","a fast food"],p:["from Italy","with cheese in it"],c:["is spicy","is eaten with chopsticks","is served cold","is deep fried"]},
+ {n:"Job",k:"person",a:"a job",sub:["a medical job","an office job"],p:["with a uniform","in a hospital"],c:["is done outdoors","needs a college degree","is done at night"]},
+ {n:"Movie",k:"media",a:"a movie",sub:["a superhero movie","a horror movie","an animated movie","a Christmas movie"],p:["about a superhero","about a dog","about space","with a talking animal"],c:["came out before 2000","won Best Picture","has a sequel"]},
+ {n:"Vegetable",k:"obj",a:"a vegetable",sub:["a leafy vegetable","a root vegetable"],p:["with a strong smell"],c:["is green","grows underground","is usually eaten raw","is orange"]},
+ {n:"Sport",k:"activity",a:"a sport",sub:["a winter sport","a water sport","a team sport"],p:["with a ball","with a racket"],c:["is in the Summer Olympics","is played on ice","is played in teams"]},
+ {n:"City",k:"place",a:"a city",sub:["a capital city","a beach city"],p:["in Asia","in the United States","on the coast"],c:["is a capital","has more than a million people"]},
+ {n:"Body part",k:"body",a:"a body part",sub:["a facial feature"],p:["with a bone in it","on your face"],c:["you have two of","is above the neck","you can see right now"]},
+ {n:"Kitchen",k:"obj",a:"something in a kitchen",sub:["a kitchen appliance","a cooking utensil"],p:["made of metal","with a plug"],c:["is sharp","fits in a drawer"]},
+ {n:"Drink",k:"obj",a:"a drink",sub:["a hot drink","a cocktail","a soft drink"],p:["with bubbles","made from fruit"],c:["has alcohol in it","is served hot"]},
+ {n:"Instrument",k:"obj",a:"a musical instrument",sub:["a string instrument","a brass instrument"],p:["with strings","with keys"],c:["you blow into","is in an orchestra","is smaller than a backpack"]},
+ {n:"Furniture",k:"obj",a:"a piece of furniture",sub:["a piece of office furniture","a piece of garden furniture"],p:["with legs","with drawers"],c:["you can sleep on","usually lives in a bedroom"]},
+ {n:"First name",k:"name",a:"a first name",sub:["a boy's name","a girl's name","a dog's name"],p:["from the Bible"],c:["is popular in Spain","sounds old-fashioned"]},
+ {n:"Clothing",k:"obj",a:"a piece of clothing",sub:["a piece of winter clothing","a piece of swimwear"],p:["with buttons","for your feet"],c:["gets worn at weddings","is usually black"]},
+ {n:"Vehicle",k:"obj",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],p:["with two wheels","on rails"],c:["seats more than ten people","is faster than a horse"]},
+ {n:"Hobby",k:"activity",a:"a hobby",sub:["an outdoor hobby","a craft"],p:[],c:["is done alone","needs special equipment","is quiet"]},
+ {n:"Bird",k:"life",a:"a bird",sub:["a bird of prey","a pet bird"],p:["with a long beak"],c:["can't fly","lives near water","is bigger than a chicken","is mostly black"]},
+ {n:"Toy",k:"obj",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]},
+ {n:"Holiday",k:"event",a:"a holiday",sub:["a winter holiday","a religious holiday"],p:["in the summer","with presents"],c:["involves fireworks","you get the day off for","has its own songs"]},
+ {n:"Tool",k:"obj",a:"a tool",sub:["a power tool","a garden tool"],p:["with a handle","with a blade"],c:["needs electricity","fits in a pocket","is used on wood"]},
+ {n:"Building",k:"place",a:"a building",sub:["a famous building","a farm building"],p:["in Europe","with a dome","on a farm"],c:["is taller than ten floors","people live in","is open at night"]},
+ {n:"School subject",k:"activity",a:"a school subject",sub:["a science class","an elective class"],p:["with homework","with a lab"],c:["involves numbers","is taught outdoors","everyone secretly likes"]},
+ {n:"Dance",k:"activity",a:"a dance",sub:["a ballroom dance","a folk dance"],p:["for two people","with a famous song","from the 70s"],c:["is done in a line","involves jumping","is from Latin America"]},
+ {n:"Flower",k:"obj",a:"a flower",sub:["a wildflower","a kind of rose"],p:["with thorns","from Asia"],c:["is red","grows on a tree","smells strong"]},
+ {n:"Insect",k:"life",a:"an insect",sub:["a flying insect","a garden bug"],p:["with stripes","with a stinger"],c:["glows","lives in a colony","is bigger than a coin"]},
+ {n:"Candy",k:"obj",a:"a candy",sub:["a chocolate bar","a chewy candy"],p:["with nuts","from a movie theater"],c:["is sour","comes in a wrapper","is sold at Halloween"]},
+ {n:"Mythical creature",k:"life",a:"a mythical creature",sub:["a sea monster","a kind of dragon"],p:["with wings","with more than one head","from Greek myths"],c:["breathes fire","lives underground","is friendly"]},
+ {n:"Weather",k:"event",a:"a kind of weather",sub:["a kind of storm"],p:["with lightning","in the winter"],c:["is wet","can knock down a tree","happens in deserts"]}
 ];
 var LETTERS="ABCDEFGHIJLMNOPRSTUVW".split("");
 /* ---- the House Rule: rolled each round. It only changes HOW you say an answer, never WHAT you name,
@@ -361,19 +361,20 @@ var FACE_RE=/(^|[^0-9])[:;=][-'^o]?[)(\]\[DPpOo3|\\\/*@$](?![a-z0-9])|(^|[^a-z0-
 var EMOJI_RE=(function(){try{return new RegExp("\\p{Extended_Pictographic}","u")}catch(e){return /[☀-➿]|[\uD83C-\uDBFF][\uDC00-\uDFFF]/}})();
 var RULES=[
  {id:"caps",tile:"!!",text:"ALL CAPS ONLY. YOU ARE SHOUTING NOW.",
-  ok:function(t){return /[A-Z]/.test(t)&&t===t.toUpperCase()},why:function(){return "NOT LOUD ENOUGH. ALL CAPS."}},
+  ok:function(t){return /[A-Z]/.test(t)&&t===t.toUpperCase()},why:function(){return "NOT LOUD ENOUGH. ALL CAPS."},follow:function(t){return t.toUpperCase()}},
  {id:"ask",tile:"?",text:"Every answer ends with a question mark? Like you're not sure?",
-  ok:function(t){return /\?\s*$/.test(t)},why:function(){return "End it with a question mark?"}},
+  ok:function(t){return /\?\s*$/.test(t)},why:function(){return "End it with a question mark?"},follow:function(t){return t.replace(/[?.!\s]*$/,"")+"?"}},
  {id:"face",tile:":)",text:"Every answer needs a face. Type one :) :( :D ;) <3 XD or use an emoji, your call.",
-  ok:function(t){return FACE_RE.test(t)||EMOJI_RE.test(t)},why:function(){return "No face. Add a :) or :( (or an emoji)."}},
+  ok:function(t){return FACE_RE.test(t)||EMOJI_RE.test(t)},why:function(){return "No face. Add a :) or :( (or an emoji)."},follow:function(t){return t+" "+pick([":)",":D",";)",":(","XD","<3"])}},
  {id:"alleged",tile:"\u00a7",text:"Every answer includes the word “allegedly”. For legal reasons.",
-  ok:function(t){return /\ballegedly\b/i.test(t)},why:function(){return "Add “allegedly”. Our lawyers insist."}},
+  ok:function(t){return /\ballegedly\b/i.test(t)},why:function(){return "Add “allegedly”. Our lawyers insist."},follow:function(t){return t+", allegedly"}},
  {id:"rate",tile:"/10",text:"Rate every answer out of 10, like “a kazoo 3/10”.",
-  ok:function(t){return /\b\d{1,3}\s*\/\s*10\b/.test(t)},why:function(){return "Give it a score, like “7/10”."}},
+  ok:function(t){return /\b\d{1,3}\s*\/\s*10\b/.test(t)},why:function(){return "Give it a score, like “7/10”."},follow:function(t){return t+" "+pick(["3/10","2/10","11/10","10/10","6/10","0/10"])}},
  {id:"none",w:.5,tile:"∅",text:"No house rule this round. Enjoy it. It won't last.",ok:function(){return true}}
 ];
 function ruleDef(r){if(!r)return null;for(var i=0;i<RULES.length;i++)if(RULES[i].id===r.id)return RULES[i];return null}
 function ruleTile(r){var d=ruleDef(r);return d?d.tile:"?"}
+function ruleFollow(t,r){var d=ruleDef(r);if(!d||!d.follow)return t;if(d.id!=="caps")t=t.replace(/[?.!]+$/,"");return d.follow(t)} // trailing ?/! comes off first, so nothing ends up as "Tuesday?, allegedly" // how the game itself would answer under this rule
 function ruleText(r){var d=ruleDef(r);return d?d.text:""}
 function prevAns(list,i){for(var j=i-1;j>=0;j--)if(list[j]&&String(list[j]).trim())return String(list[j]).trim();return ""} // the last answer you actually wrote above this one
 function ruleOkAt(list,i,r){var d=ruleDef(r),t=String((list||[])[i]||"").trim();return !d||!t||d.ok(t,r,prevAns(list,i))}
@@ -402,12 +403,44 @@ var normAns=function(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/
 
 /* ---- conditions: 0 to 10 per prompt. 0 = plain prompt (don't name one). ---- */
 var MAX_CONDS=20;
-var VIBES=["would survive a zombie apocalypse","your grandma has heard of","fits in a shoebox","sounds completely made up","would make a good name for a dog",
-  "is sold at a gas station","could beat a goose in a fight","is cooler than it sounds","a pirate would want","you'd bring to a sleepover",
-  "is suspiciously shiny","would win a staring contest","you could hear from space","a toddler could spell","smells a little weird","is famous in Canada",
-  "your dentist would approve of","is legally a sandwich","fits in a microwave","was invented after 1990","has been to space","is louder than a lawnmower",
-  "a cat would knock off a table","you'd find in a museum gift shop","would get you kicked out of a library","rhymes with \"cheese\"","a medieval peasant would recognize",
-  "is mentioned in at least one country song","you could carry up a ladder","would be weird to receive as a gift"];
+// Silly conditions, each tagged with the kinds of thing it can actually be true or false of ("*" = anything).
+// No more movies that could beat a goose in a fight.
+var VIBES=[
+  ["would survive a zombie apocalypse","life obj place person"],
+  ["your grandma has heard of","*"],
+  ["fits in a shoebox","obj life body"],
+  ["sounds completely made up","*"],
+  ["would make a good name for a dog","*"],
+  ["is sold at a gas station","obj"],
+  ["could beat a goose in a fight","life person"],
+  ["is cooler than it sounds","*"],
+  ["a pirate would want","*"],
+  ["you'd bring to a sleepover","obj life media activity"],
+  ["is suspiciously shiny","obj life place body"],
+  ["would win a staring contest","life person"],
+  ["you could hear from space","obj event activity"],
+  ["a toddler could spell","*"],
+  ["smells a little weird","obj life place body person"],
+  ["is famous in Canada","*"],
+  ["your dentist would approve of","obj activity media event"],
+  ["is legally a sandwich","obj"],
+  ["fits in a microwave","obj life"],
+  ["was invented after 1990","obj activity media"],
+  ["has been to space","obj life person"],
+  ["is louder than a lawnmower","obj life event activity place"],
+  ["a cat would knock off a table","obj"],
+  ["you'd find in a museum gift shop","obj"],
+  ["would get you kicked out of a library","obj life activity person"],
+  ["rhymes with \"cheese\"","*"],
+  ["a medieval peasant would recognize","*"],
+  ["is mentioned in at least one country song","*"],
+  ["you could carry up a ladder","obj life body"],
+  ["would be weird to receive as a gift","*"],
+  ["your dad has strong opinions about","*"],
+  ["would ruin a first date","*"],
+  ["sounds like a wizard's spell","*"]
+];
+function vibesFor(k){return VIBES.filter(function(v){return v[1]==="*"||(" "+v[1]+" ").indexOf(" "+k+" ")>=0}).map(function(v){return v[0]})}
 function pick(a){return a[rnd(a.length)]}
 function spellingConds(){
   return [
@@ -448,7 +481,7 @@ function makePrompts(rule,n){
     var prep=c.p.length&&Math.random()<.5?pick(c.p):"";
     var left=n-(prep?1:0),conds=[];
     // small counts lean on category and spelling conditions; big counts pull in the silly ones too
-    var core=shuffle(c.c.slice().concat(spellingConds())),silly=shuffle(VIBES.slice());
+    var core=shuffle(c.c.slice().concat(spellingConds())),silly=shuffle(vibesFor(c.k));
     var pool=left<=6?shuffle(core.slice(0,8).concat(silly.slice(0,3))):core.concat(silly);
     var seen={};conds.forEach(function(x){seen[x]=1});
     pool.forEach(function(x){if(left>0&&!seen[x]){seen[x]=1;conds.push(x);left--}});
@@ -1324,7 +1357,7 @@ function drawDoodle(g,x,y,sz,o){
   g.restore();
 }
 
-function pencilCinematic(root){
+function pencilCinematic(root,rule){
   var score=startScore(),scoreStopped=false;
   function stopScore(){if(score&&!scoreStopped){scoreStopped=true;score.stop();if(currentScore===score)currentScore=null}}
   setTimeout(stopScore,STOP_PAUSE+1500); // safety net if the trailer is never closed normally
@@ -1332,7 +1365,7 @@ function pencilCinematic(root){
   var dpr=Math.min(2,window.devicePixelRatio||1),W=0,Hh=0,R=0,L=0,T=0,mode="wide";
   var whole,halfL,halfR,paper,stamp,round,sticker,glintC,crack=null,grain=makeGrain();
   var rand=Math.random,motes=[],debris=[],puffs=[],flock=[],reduced=REDUCED,pigPt=null,stickPt=null;
-  var WORDS=["a kazoo, probably","my uncle's boat","the moon (wrong)","a confused goose","Tuesday?"],written=WORDS[(Math.random()*WORDS.length)|0];
+  var WORDS=["a kazoo, probably","my uncle's boat","the moon (wrong)","a confused goose","Tuesday?"],written=ruleFollow(WORDS[(Math.random()*WORDS.length)|0],rule); // even the pencil obeys the House Rule
   var I=FILM.IMPACT,A0TOP=-.06;
   function layout(){
     W=root.clientWidth||innerWidth;Hh=root.clientHeight||innerHeight;
@@ -2248,7 +2281,7 @@ function playTrailer(s){
   };
   var skipN=0,skip=el.querySelector(".skip:not(.mute)");
   skip.onclick=function(){skip.textContent=NO_SKIP[skipN++%NO_SKIP.length];sfx("boing")};
-  pencilCinematic(el);
+  pencilCinematic(el,s.rule);
   L.cineT=setTimeout(function(){el.classList.add("out");setTimeout(function(){el.remove();if(L.cineEl===el)L.cineEl=null},500)},CINE_MS);
 }
 function updateTimer(){
