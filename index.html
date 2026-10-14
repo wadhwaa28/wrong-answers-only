@@ -299,6 +299,23 @@ mark{background:linear-gradient(100deg,transparent 2%,var(--hi) 4%,var(--hi) 96%
 .shamefx.calm .sf-word{animation:none;opacity:1;transform:translate(-50%,-50%) rotate(var(--r))}
 .shamefx.calm .sf-word{animation:sfFade .4s ease-in .9s forwards}
 @media (prefers-reduced-motion:reduce){.vlist li.pelted{animation:none}}
+/* the shamee's little moment */
+.shamee{position:fixed;inset:0;z-index:39;pointer-events:none;overflow:hidden}
+.se-card{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-140%);display:flex;align-items:center;gap:12px;
+  width:min(420px,calc(100% - 32px));padding:12px 16px;background:var(--paper);color:var(--ink);border:2px solid var(--red);border-radius:10px;
+  box-shadow:4px 5px 0 var(--red);animation:seIn .45s cubic-bezier(.2,1.5,.4,1) forwards}
+.se-card b{display:block;font-family:var(--display);font-size:1.02rem;color:var(--red);line-height:1.15}
+.se-card div span{display:block;font-size:.84rem;color:var(--muted);margin-top:2px}
+.se-card .se-bell{flex:none;font-size:30px;color:#c98d1f;margin:0;transform-origin:50% 8%;animation:seRing .22s ease-in-out .3s 6 alternate}
+.se-bell .bellicon{width:30px;height:33px}
+.shamee.out .se-card{animation:seOut .4s ease-in forwards}
+.shamee.out .sf-tom,.shamee.out .sf-splat{transition:opacity .3s;opacity:0!important}
+@keyframes seIn{to{transform:translate(-50%,0)}}
+@keyframes seOut{from{transform:translate(-50%,0)}to{transform:translate(-50%,-150%)}}
+@keyframes seRing{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+.shamee.calm .se-card{animation:none;transform:translate(-50%,0)}
+.shamee.calm .se-card .se-bell{animation:none}
+.shamee.calm.out .se-card{animation:sfFade .4s ease-in forwards}
 .stamping .stamp{animation:thunk .35s cubic-bezier(.2,1.6,.4,1) both;animation-delay:var(--d,0ms)}
 @keyframes thunk{from{opacity:0;transform:scale(2.4) rotate(-18deg)}to{opacity:1;transform:rotate(-5deg)}}
 /* the STOP cinematic: its own dark movie-theater world in both themes */
@@ -2194,7 +2211,7 @@ function buildState(forWire){
   if(H.phase==="vote"){
     s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return realAnswer(A[pid][i])}).map(function(pid){return {pid:pid,text:A[pid][i].trim(),rb:!ruleOkAt(A[pid],i,H.rule)}})});
     var sh=shameRound(H.game,H.round);
-    s.junk=H.prompts.map(function(p,i){return sh.filter(function(x){return x.i===i}).map(function(x){return {key:x.key,text:x.text,why:x.why}})});
+    s.junk=H.prompts.map(function(p,i){return sh.filter(function(x){return x.i===i}).map(function(x){return {key:x.key,text:x.text,why:x.why,n:x.count}})}); // n: times shamed so far (tied to the answer, never the person)
   }
   if(H.phase==="results"){var sr=scoreRound(H.game,H.round);s.results={rows:sr.rows.map(function(x){x.name=nameOf(x.pid);return x}),totals:sr.totals,
     shame:shameRound(H.game,H.round).map(function(x){return {i:x.i,text:x.text,why:x.why,count:x.count}})}} // no key, no pid: just the crime
@@ -2765,6 +2782,7 @@ function pressStop(){
 
 function buildVote(){
   if(AC&&soundOn)loadBoo();
+  var hit=noticeMyShame();
   var s=V,k=key();
   if(L.voteKey!==k){L.voteKey=k;L.myVote={reject:{},funny:{},shame:{},done:false}}
   var html=s.prompts.map(function(p,i){
@@ -2793,9 +2811,43 @@ function buildVote(){
   $("#body").querySelectorAll("[data-shame]").forEach(function(b){b.onclick=function(){var x=b.dataset.shame;
     if(L.myVote.shame[x])delete L.myVote.shame[x];else{L.myVote.shame[x]=true;shameFx(b.closest("li"))}
     clearTimeout(L.voteTimer);L.voteTimer=setTimeout(sendVote,300);buildVote()}});
+  if(hit)shameeFx(hit);
   $("#body").querySelectorAll("[data-star]").forEach(function(b){b.onclick=function(){var i=b.dataset.star;if(L.myVote.funny[i]===b.dataset.pid)delete L.myVote.funny[i];else L.myVote.funny[i]=b.dataset.pid;changed()}});
 }
 
+/* The shamee's side: your own device spots your answer among the shamed ones (it knows what you typed),
+   and plays a small moment when someone else rings the bell on it. Nothing about who wrote it leaves this device. */
+function myShamedKeys(){
+  var s=V,k=key(),out={};if(!s||!s.junk||L.ansKey!==k||!L.myAns)return out;
+  s.junk.forEach(function(list,i){(list||[]).forEach(function(j){if(normAns(L.myAns[i])===normAns(j.text))out[j.key]=j})});
+  return out;
+}
+function noticeMyShame(){
+  var k=key();if(L.shameSeenKey!==k){L.shameSeenKey=k;L.shameSeen={}}
+  var mine=myShamedKeys(),hit=null;
+  Object.keys(mine).forEach(function(jk){
+    var others=Math.max(0,(mine[jk].n||0)-(L.myVote&&L.myVote.shame&&L.myVote.shame[jk]?1:0));   // shaming yourself doesn't count (even while your vote is still on its way)
+    if(L.shameSeen.hasOwnProperty(jk)&&others>L.shameSeen[jk])hit=jk;
+    L.shameSeen[jk]=others;
+  });
+  return hit;
+}
+function shameeFx(jk){
+  var li=document.querySelector('[data-shame="'+jk+'"]');li=li&&li.closest("li");
+  var old=document.querySelector(".shamee");if(old)old.remove();
+  var fx=document.createElement("div");fx.className="shamee"+(REDUCED?" calm":"");fx.setAttribute("role","status");
+  fx.innerHTML='<div class="se-card"><span class="se-bell">'+bellSVG()+'</span><div><b>Someone just shamed your answer.</b><span>Don\'t worry, nobody knows it\'s yours. Probably.</span></div></div>';
+  if(!REDUCED){
+    // aim at your answer if it's on screen; if you've scrolled away from it, the tomato hits the notice instead
+    var r=li?li.getBoundingClientRect():null,seen=r&&r.bottom>40&&r.top<innerHeight-40,
+      ex=seen?r.left+r.width*(.25+Math.random()*.5):innerWidth/2+(Math.random()-.5)*Math.min(260,innerWidth*.5),ey=seen?r.top+r.height*.5:58;
+    fx.innerHTML+='<span class="sf-tom se-tom" style="--sx:'+(innerWidth/2)+'px;--sy:-60px;--ex:'+ex+'px;--ey:'+ey+'px;--d:.25s;--spin:420deg">'+tomatoSVG()+'</span>'+
+      '<span class="sf-splat" style="left:'+ex+'px;top:'+ey+'px;--d:.67s;--rot:'+Math.round(Math.random()*360)+'deg"></span>';
+    if(seen){li.classList.remove("pelted");void li.offsetWidth;li.classList.add("pelted")}}
+  document.body.appendChild(fx);
+  sfx("bell");if(soundOn)loadBoo(function(b){try{var src=AC.createBufferSource(),g=AC.createGain();g.gain.value=.35;src.buffer=b;src.connect(g);g.connect(AC.destination);src.start()}catch(e){}}); // a quieter boo, from far away
+  setTimeout(function(){fx.classList.add("out")},2600);setTimeout(function(){fx.remove()},3100);
+}
 /* Drawn, not emoji: the bell and the tomatoes look the same on every phone and computer. */
 var SVGN=0;
 function bellSVG(big){
