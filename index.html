@@ -272,17 +272,20 @@ mark{background:linear-gradient(100deg,transparent 2%,var(--hi) 4%,var(--hi) 96%
 .stamp.rbs{color:var(--red)}
 /* the walk of shame */
 .shamefx{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden}
-.sf-bell{position:fixed;left:50%;top:6%;width:120px;margin-left:-60px;text-align:center;font-size:96px;line-height:1;transform-origin:50% 0;
+.bellicon{width:1em;height:1.1em;vertical-align:-.18em;flex:none}
+.sf-bell svg{width:100%;height:auto;display:block;overflow:visible}
+.sf-tom svg{width:100%;height:100%;display:block}
+.sf-bell{position:fixed;left:50%;top:6%;width:110px;margin-left:-55px;line-height:1;transform-origin:50% 0;
   animation:sfBell .38s ease-in-out 3 alternate,sfFade .4s ease-in 1.75s forwards;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
-.sf-bell span{display:inline-block;animation:sfClapper .19s ease-in-out 6 alternate}
+.sf-bell .sf-clap{transform-box:view-box;transform-origin:32px 50px;animation:sfClapper .19s ease-in-out 6 alternate}
 @keyframes sfBell{from{transform:rotate(-28deg)}to{transform:rotate(28deg)}}
-@keyframes sfClapper{from{transform:translateX(-3px)}to{transform:translateX(3px)}}
+@keyframes sfClapper{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}
 .sf-word{position:fixed;font-family:var(--display);font-size:clamp(2.6rem,11vw,5.5rem);color:var(--red);letter-spacing:.03em;
   -webkit-text-stroke:2px var(--paper);paint-order:stroke fill;text-shadow:0 4px 0 rgba(0,0,0,.18);opacity:0;transform:translate(-50%,-50%) scale(2.6) rotate(var(--r));
   animation:sfStamp .32s cubic-bezier(.2,1.6,.4,1) calc(var(--i)*.38s) forwards,sfFade .4s ease-in 1.8s forwards}
 @keyframes sfStamp{to{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(var(--r))}}
 @keyframes sfFade{to{opacity:0}}
-.sf-tom{position:fixed;left:0;top:0;font-size:34px;line-height:1;opacity:0;animation:sfThrow .45s cubic-bezier(.35,.1,.75,.5) var(--d) forwards}
+.sf-tom{position:fixed;left:0;top:0;width:36px;height:36px;line-height:1;opacity:0;animation:sfThrow .45s cubic-bezier(.35,.1,.75,.5) var(--d) forwards}
 @keyframes sfThrow{0%{opacity:1;transform:translate(var(--sx),var(--sy)) rotate(0) scale(1.3)}
   100%{opacity:1;transform:translate(calc(var(--ex) - 17px),calc(var(--ey) - 17px)) rotate(var(--spin)) scale(.8)}}
 .sf-splat{position:fixed;width:58px;height:46px;margin:-23px 0 0 -29px;opacity:0;transform:rotate(var(--rot)) scale(.2);
@@ -292,7 +295,7 @@ mark{background:linear-gradient(100deg,transparent 2%,var(--hi) 4%,var(--hi) 96%
 @keyframes sfSplat{to{opacity:.92;transform:rotate(var(--rot)) scale(1)}}
 .vlist li.pelted{animation:sfShake .5s ease-in-out .5s 2}
 @keyframes sfShake{25%{transform:translateX(-4px) rotate(-.6deg)}75%{transform:translateX(4px) rotate(.6deg)}}
-.shamefx.calm .sf-bell,.shamefx.calm .sf-bell span{animation:sfFade .4s ease-in .9s forwards}
+.shamefx.calm .sf-bell{animation:sfFade .4s ease-in .9s forwards}.shamefx.calm .sf-clap{animation:none}
 .shamefx.calm .sf-word{animation:none;opacity:1;transform:translate(-50%,-50%) rotate(var(--r))}
 .shamefx.calm .sf-word{animation:sfFade .4s ease-in .9s forwards}
 @media (prefers-reduced-motion:reduce){.vlist li.pelted{animation:none}}
@@ -550,7 +553,7 @@ var FACE_RE=/(^|[^0-9])[:;=][-'^o]?[)(\]\[DPpOo3|\\\/*@$](?![a-z0-9])|(^|[^a-z0-
 var EMOJI_RE=(function(){try{return new RegExp("\\p{Extended_Pictographic}","u")}catch(e){return /[☀-➿]|[\uD83C-\uDBFF][\uDC00-\uDFFF]/}})();
 var RULES=[
  {id:"caps",tile:"!!",text:"ALL CAPS ONLY. YOU ARE SHOUTING NOW.",
-  ok:function(t){return /[A-Z]/.test(t)&&t===t.toUpperCase()},why:function(){return "NOT LOUD ENOUGH. ALL CAPS."},follow:function(t){return t.toUpperCase()}},
+  ok:function(t){return /[A-Z0-9]/.test(t)&&t===t.toUpperCase()},why:function(){return "NOT LOUD ENOUGH. ALL CAPS."},follow:function(t){return t.toUpperCase()}},
  {id:"ask",tile:"?",text:"Every answer ends with a question mark? Like you're not sure?",
   ok:function(t){return /\?\s*$/.test(t)},why:function(){return "End it with a question mark?"},follow:function(t){return t.replace(/[?.!\s]*$/,"")+"?"}},
  {id:"face",tile:":)",text:"Every answer needs a face. Type one :) :( :D ;) <3 XD or use an emoji, your call.",
@@ -2777,7 +2780,7 @@ function buildVote(){
     var pill=junk.length?'<div class="pillory"><div class="pillhead">Publicly shamed</div><ul class="vlist">'+junk.map(function(j){
       var on=!!L.myVote.shame[j.key],mine=L.myAns&&normAns(L.myAns[i])===normAns(j.text)&&L.ansKey===k;
       return '<li class="shamed"><div><div class="atext">'+esc(j.text)+'</div><div class="who">Crime: '+esc(CRIMES[j.why]||"keyboard smash")+(mine?' · this one\'s yours (only you can see that)':'')+'</div></div>'+
-        '<div class="vctl"><button type="button" class="tog bell" data-shame="'+esc(j.key)+'" aria-pressed="'+on+'">🔔 '+(on?"Shamed!":"Shame")+'</button></div></li>';
+        '<div class="vctl"><button type="button" class="tog bell" data-shame="'+esc(j.key)+'" aria-pressed="'+on+'">'+bellSVG()+' '+(on?"Shamed!":"Shame")+'</button></div></li>';
     }).join("")+'</ul></div>':'';
     return promptHTML(p,i,(items?'<ul class="vlist">'+items+'</ul>':'<p class="empty">Nobody answered this one. Cowards.</p>')+pill);
   }).join("");
@@ -2793,17 +2796,41 @@ function buildVote(){
   $("#body").querySelectorAll("[data-star]").forEach(function(b){b.onclick=function(){var i=b.dataset.star;if(L.myVote.funny[i]===b.dataset.pid)delete L.myVote.funny[i];else L.myVote.funny[i]=b.dataset.pid;changed()}});
 }
 
+/* Drawn, not emoji: the bell and the tomatoes look the same on every phone and computer. */
+var SVGN=0;
+function bellSVG(big){
+  if(!big)return '<svg class="bellicon" viewBox="0 0 64 72" aria-hidden="true" focusable="false"><path fill="currentColor" d="M27 4h10v6H27zM32 9c-11 0-18 9-18 22v13c0 4-3 7-7 9v2h50v-2c-4-2-7-5-7-9V31c0-13-7-22-18-22zM5 56h54v5H5zM27 63a5 5 0 0 0 10 0z"/></svg>';
+  var i=++SVGN;
+  return '<svg viewBox="0 0 64 74" aria-hidden="true" focusable="false"><defs>'+
+    '<linearGradient id="sfB'+i+'" x1="0" x2="1"><stop offset="0" stop-color="#8a5a12"/><stop offset=".35" stop-color="#f3c24a"/><stop offset=".55" stop-color="#ffe9a3"/><stop offset=".8" stop-color="#c98d1f"/><stop offset="1" stop-color="#7a4d0c"/></linearGradient>'+
+    '<linearGradient id="sfR'+i+'" x1="0" x2="1"><stop offset="0" stop-color="#6b430b"/><stop offset=".5" stop-color="#d9a332"/><stop offset="1" stop-color="#5e3a09"/></linearGradient></defs>'+
+    '<path d="M26 2h12a2 2 0 0 1 2 2v7H24V4a2 2 0 0 1 2-2z" fill="#6b430b"/>'+
+    '<g class="sf-clap"><path d="M31 50h2v12h-2z" fill="#5e3a09"/><circle cx="32" cy="66" r="6" fill="#4a2e06"/><circle cx="30" cy="64" r="2" fill="#c98d1f"/></g>'+
+    '<path d="M32 9c-11 0-18 9-18 22v13c0 4-3 7-7 9v3h50v-3c-4-2-7-5-7-9V31c0-13-7-22-18-22z" fill="url(#sfB'+i+')"/>'+
+    '<rect x="4" y="54" width="56" height="7" rx="3.5" fill="url(#sfR'+i+')"/>'+
+    '<path d="M21 26c1-7 5-11 10-13" stroke="#fff6cf" stroke-width="3.5" fill="none" stroke-linecap="round" opacity=".85"/>'+
+    '<path d="M16 46h32" stroke="#7a4d0c" stroke-width="1.5" opacity=".5"/></svg>';
+}
+function tomatoSVG(){
+  var i=++SVGN;
+  return '<svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><defs><radialGradient id="sfT'+i+'" cx=".38" cy=".35" r=".75">'+
+    '<stop offset="0" stop-color="#ff8a6a"/><stop offset=".45" stop-color="#e5321f"/><stop offset="1" stop-color="#9c160b"/></radialGradient></defs>'+
+    '<ellipse cx="20" cy="23" rx="16" ry="14.5" fill="url(#sfT'+i+')"/>'+
+    '<path d="M11 18c2-3 5-4 8-4" stroke="#ffd2c4" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".8"/>'+
+    '<g fill="#3f8a2a"><path d="M20 10 14 6l3 6z"/><path d="M20 10l6-4-3 6z"/><path d="M20 10 11 12l7 1z"/><path d="M20 10l9 2-7 1z"/><path d="M20 10l-1 4h2z"/></g>'+
+    '<path d="M20 10V4" stroke="#2f6b1f" stroke-width="2.4" stroke-linecap="round"/></svg>';
+}
 /* The walk of shame: a bell swings, SHAME! gets stamped three times, and the crowd pelts the answer with tomatoes.
    Only on the screen of whoever rang the bell. */
 function shameFx(li){
   var r=li?li.getBoundingClientRect():{left:innerWidth*.3,top:innerHeight*.4,width:innerWidth*.4,height:60};
   var fx=document.createElement("div");fx.className="shamefx"+(REDUCED?" calm":"");fx.setAttribute("aria-hidden","true");
-  var spots=[[.18,.30,-8],[.62,.22,6],[.40,.62,-3]],html='<div class="sf-bell"><span>🔔</span></div>';
+  var spots=[[.18,.30,-8],[.62,.22,6],[.40,.62,-3]],html='<div class="sf-bell">'+bellSVG(true)+'</div>';
   spots.forEach(function(sp,i){html+='<div class="sf-word" style="--i:'+i+';left:'+(sp[0]*100)+'%;top:'+(sp[1]*100)+'%;--r:'+sp[2]+'deg">SHAME!</div>'});
   if(!REDUCED)for(var k=0;k<6;k++){
     var fromLeft=k%2===0,sx=fromLeft?-60:innerWidth+60,sy=innerHeight*(.55+Math.random()*.45),
       ex=r.left+r.width*(.1+Math.random()*.8),ey=r.top+r.height*(.2+Math.random()*.6),d=.45+k*.17;
-    html+='<span class="sf-tom" style="--sx:'+sx+'px;--sy:'+sy+'px;--ex:'+ex+'px;--ey:'+ey+'px;--d:'+d+'s;--spin:'+(fromLeft?540:-540)+'deg">🍅</span>'+
+    html+='<span class="sf-tom" style="--sx:'+sx+'px;--sy:'+sy+'px;--ex:'+ex+'px;--ey:'+ey+'px;--d:'+d+'s;--spin:'+(fromLeft?540:-540)+'deg">'+tomatoSVG()+'</span>'+
           '<span class="sf-splat" style="left:'+ex+'px;top:'+ey+'px;--d:'+(d+.42)+'s;--rot:'+Math.round(Math.random()*360)+'deg"></span>';
   }
   fx.innerHTML=html;document.body.appendChild(fx);
@@ -2816,7 +2843,7 @@ function boardHTML(){
   var ps=V.players.slice().sort(function(a,b){return b.score-a.score}),place=0,prev=null;
   return '<ol class="board">'+ps.map(function(p,i){if(p.score!==prev){place=i+1;prev=p.score}return '<li class="'+(place===1?"first":"")+'"><span class="place">'+place+'</span><span class="nm">'+esc(p.name)+(p.id===ME.id?" (you)":"")+'</span><span class="sc">'+p.score+'</span></li>'}).join("")+'</ol>';
 }
-function shameLine(n){return n?("🔔 Shamed by "+n+(n===1?" person":" people")):"Somehow escaped shame"}
+function shameLine(n){return n?("Shamed by "+n+(n===1?" person":" people")):"Somehow escaped shame"}
 function shameHTML(list,i,delay){ // smashes in results: the crime and the verdict, never the person
   var mine=(list||[]).filter(function(x){return x.i===i}).sort(function(a,b){return b.count-a.count});
   if(!mine.length)return "";
@@ -2855,7 +2882,7 @@ function buildFinal(){
     '<section class="sheet pad stack"><h2>Funniest answer of the game</h2>'+
     (b?'<div class="best"><div class="atext">'+esc(b.text)+'</div><div class="who">'+esc(b.name)+' · round '+b.round+' · '+b.funny+' funny vote'+(b.funny>1?"s":"")+'</div></div>':'<p class="empty">No funny votes this game. Tough crowd.</p>')+
     (s.worst?'<h2>Hall of Shame</h2><div class="pillory hall"><div class="atext">'+esc(s.worst.text)+'</div>'+
-      '<div class="who">Round '+s.worst.round+' · Crime: '+esc(CRIMES[s.worst.why]||"keyboard smash")+' · '+esc(shameLine(s.worst.count))+'</div>'+
+      '<div class="who">Round '+s.worst.round+' · Crime: '+esc(CRIMES[s.worst.why]||"keyboard smash")+' · '+(s.worst.count?bellSVG()+' ':'')+esc(shameLine(s.worst.count))+'</div>'+
       '<div class="who">Author: unknown, and we\'d like to keep it that way.</div></div>':'')+
     '</section></div>';
   if(L.animKey!=="final"+s.game){L.animKey="final"+s.game;sfx("fanfare");confetti()}
