@@ -1954,21 +1954,39 @@ function allowed(w){if(!LM_OK)LM_OK=new Set(LM_ALLOW.split(" "));return LM_OK.ha
 var SHORT_OK=["tv","pc","dj","mc","cd","dvd","bbq","gq","nfl","nhl","nba","mlb","fbi","cia","nsa","nyc","dc","la","uk","ufc","wwf","wwe","gps","mp3","mp4","atm",
   "bmw","kfc","hbo","cbs","nbc","cnn","bbc","sms","pdf","jpg","gif","png","vr","ar","ac","pr","hr","pm","st","dr","mr","ms","jr","sr","vs","tnt","dna","rv","pj","pjs",
   "shh","hmm","hm","mm","mmm","psst","brr","grr","tsk","pfft","zzz","nth","pst","ssh","sh","ps","r2","3d","4x4","dnd","xxl","xl","ny","rn","bff","dm","pb","wd"];
-/* ---- brainrot: real words, so they're allowed in, but they get publicly shamed and can't score ---- */
-var BRAINROT_WORDS={rizz:1,rizzler:1,rizzed:1,rizzing:1,rizzy:1,skibidi:1,gyatt:1,gyat:1,gyatts:1,fanum:1,mewing:1,amogus:1,delulu:1,bussin:1,griddy:1,brainrot:1,tuah:1,mogging:1,mogged:1,sigmas:1};
-var BRAINROT_PHRASES=[
-  /\bsix[\s-]*seven\b/, /(^|[^0-9])6\s*[-\u2013\u2014\s]\s*7([^0-9]|$)/, /6\ufe0f?\u20e3\s*7\ufe0f?\u20e3/,  // six-seven, 6-7, 6 7 (a plain 67 is just a number)
-  /\bwhat the sigma\b/, /\bsigma (male|grindset|rizz|boy|face|mindset|mode)\b/, /\b(alpha|beta|omega) (male|wolf) sigma\b/,
-  /\bonly in ohio\b/, /\bohio (rizz|final boss|moment|sigma|core)\b/, /\bohiocore\b/,
-  /[+-]\s*\d+\s*aura\b/, /\baura\s*[+-]\s*\d+/, /\baura (points|farming|farm|debt|loss)\b/,
-  /\bno cap\b/, /\bgoofy ahh\b/, /\bhawk tuah\b/, /\bgrimace shake\b/, /\bchat is this real\b/, /\bbaby gronk\b/,
-  /\b[a-z]+maxx?ing\b/, /\bfanum tax\b/, /\bbombastic side eye\b/, /\bmewing streak\b/
-];
+/* ---- brainrot: real words, so they're allowed in, but they get publicly shamed and can't score ----
+   Matching reads past disguises: spaces, hyphens, dots and underscores between letters (looks-maxxing, r i z z),
+   stretched letters (rizzzzz) and leetspeak (r1zz). It only ever joins whole neighbouring words, so "drizzle" is safe. */
+var BRAINROT_TERMS=["rizz","rizzler","rizzed","rizzing","rizzy","skibidi","skibiditoilet","gyatt","gyat","fanumtax","mewing","mewingstreak","amogus",
+  "delulu","bussin","griddy","brainrot","tuah","hawktuah","mogging","mogged","sigmas","maxxing","sixseven",
+  "whatthesigma","sigmamale","sigmagrindset","sigmarizz","sigmaboy","sigmaface","sigmamindset","sigmamode","alphamalesigma",
+  "onlyinohio","ohiorizz","ohiofinalboss","ohiomoment","ohiosigma","ohiocore","aurapoints","aurafarming","aurafarm","auradebt","auraloss",
+  "nocap","goofyahh","grimaceshake","chatisthisreal","babygronk","bombasticsideeye"];
+var BR_SET={},BR_SQ={};BRAINROT_TERMS.forEach(function(t){BR_SET[t]=1;BR_SQ[t.replace(/(.)\1+/g,"$1")]=t.length});
+var BR_LEET={"1":"i","!":"i","3":"e","4":"a","@":"a","0":"o","5":"s","$":"s","7":"t","8":"b","9":"g"};
+var BR_NUM={"6":"six","7":"seven","67":"67"};
+function brToken(t){
+  if(/^\d+$/.test(t))return BR_NUM[t]||t;                                           // 6 and 7 on their own spell six-seven; 67 is just 67
+  return t.replace(/[0-9!@$]/g,function(c){return BR_LEET[c]||c});                  // r1zz -> rizz
+}
+function brHit(j){ // j: neighbouring words glued together
+  if(BR_SET[j])return true;
+  var sq=j.replace(/(.)\1+/g,"$1");if(BR_SQ.hasOwnProperty(sq)&&j.length>=BR_SQ[sq])return true;  // rizzzzz, gyaaatt (but "riz" is too short to count)
+  if(/^[a-z]*maxx+ing$/.test(j))return true;                                                   // anything-maxxing
+  if(/^(looks|sleep|jaw|skin|height|mog|aura|face|brain|money|sigma)max+ing$/.test(j))return true; // looksmaxing with one x (not "climaxing")
+  return false;
+}
 function isBrainrot(t){
-  var s=String(t||"").toLowerCase().replace(/\s+/g," ");
-  var words=s.match(/[a-z]+/g)||[];
-  for(var i=0;i<words.length;i++)if(BRAINROT_WORDS[words[i]])return true;
-  for(i=0;i<BRAINROT_PHRASES.length;i++)if(BRAINROT_PHRASES[i].test(s))return true;
+  var raw=String(t||"").toLowerCase();
+  if(/6️?⃣\s*7️?⃣/.test(raw))return true;                        // 6️⃣7️⃣
+  if(/[+-]\s*\d+\s*a\s*u\s*r\s*a\b/.test(raw)||/\baura\s*[+-]\s*\d+/.test(raw))return true; // +1000 aura
+  raw=raw.replace(/(\d)[.,](\d)/g,"$1$2");                                          // 6.7 is a decimal, not six-seven
+  var toks=(raw.match(/[a-z0-9!@$]+/g)||[]).map(brToken).filter(Boolean);
+  for(var i=0;i<toks.length;i++){var j="";
+    for(var k=i;k<toks.length&&k<i+6;k++){j+=toks[k];if(brHit(j))return true}}
+  // spelled out a letter at a time: r i z z, l o o k s m a x x i n g
+  var singles=raw.replace(/[^a-z0-9]+/g," ").trim().split(" ");
+  if(singles.length>=3&&singles.every(function(x){return x.length<=2})&&brHit(singles.map(brToken).join("")))return true;
   return false;
 }
 function smashy(x){var j=junkReason(x);return !!j&&j!=="brainrot"} // brainrot can be submitted; smashes can't
