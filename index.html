@@ -320,37 +320,177 @@ var TOPIC="wrong-answers-only/v2/";
 /* ================= content ================= */
 /* a: the base thing. sub: narrower kinds used only as plain prompts ("Name a superhero movie." = one category, no conditions).
    p: conditions phrased right after the noun ("a movie about a superhero"). c: "that ..." conditions. */
+/* ---- Categories. Every prompt with conditions is built from one real answer in "items", using only
+   conditions that are true of it, so every prompt has at least one correct answer (which, of course,
+   is exactly what you're not allowed to say).
+   item format: "name|syllables|tags". Tags are this category's facts (f), its phrase conditions (p),
+   silly conditions (see VIBE), "sil" = has a silent letter, "-gma" = your grandma has NOT heard of it. ---- */
 var CATS=[
- {n:"Fruit",k:"obj",a:"a fruit",sub:["a tropical fruit","a citrus fruit","a dried fruit"],p:["from Asia","with fuzzy skin"],c:["is red","grows on trees","is smaller than a golf ball"]},
- {n:"Animal",k:"life",a:"an animal",sub:["a farm animal","a sea animal","a jungle animal"],p:["with stripes","from Australia","with no legs"],c:["can fly","is a mammal","weighs less than a cat","lives in the ocean"]},
- {n:"Country",k:"place",a:"a country",sub:["a European country","an island country"],p:["in Europe","in the Southern Hemisphere","with red on its flag"],c:["is landlocked","has more than 50 million people","has hosted the Olympics"]},
- {n:"Food",k:"obj",a:"a food",sub:["a breakfast food","a dessert","a fast food"],p:["from Italy","with cheese in it"],c:["is spicy","is eaten with chopsticks","is served cold","is deep fried"]},
- {n:"Job",k:"person",a:"a job",sub:["a medical job","an office job"],p:["with a uniform","in a hospital"],c:["is done outdoors","needs a college degree","is done at night"]},
- {n:"Movie",k:"media",a:"a movie",sub:["a superhero movie","a horror movie","an animated movie","a Christmas movie"],p:["about a superhero","about a dog","about space","with a talking animal"],c:["came out before 2000","won Best Picture","has a sequel"]},
- {n:"Vegetable",k:"obj",a:"a vegetable",sub:["a leafy vegetable","a root vegetable"],p:["with a strong smell"],c:["is green","grows underground","is usually eaten raw","is orange"]},
- {n:"Sport",k:"activity",a:"a sport",sub:["a winter sport","a water sport","a team sport"],p:["with a ball","with a racket"],c:["is in the Summer Olympics","is played on ice","is played in teams"]},
- {n:"City",k:"place",a:"a city",sub:["a capital city","a beach city"],p:["in Asia","in the United States","on the coast"],c:["is a capital","has more than a million people"]},
- {n:"Body part",k:"body",a:"a body part",sub:["a facial feature"],p:["with a bone in it","on your face"],c:["you have two of","is above the neck","you can see right now"]},
- {n:"Kitchen",k:"obj",a:"something in a kitchen",sub:["a kitchen appliance","a cooking utensil"],p:["made of metal","with a plug"],c:["is sharp","fits in a drawer"]},
- {n:"Drink",k:"obj",a:"a drink",sub:["a hot drink","a cocktail","a soft drink"],p:["with bubbles","made from fruit"],c:["has alcohol in it","is served hot"]},
- {n:"Instrument",k:"obj",a:"a musical instrument",sub:["a string instrument","a brass instrument"],p:["with strings","with keys"],c:["you blow into","is in an orchestra","is smaller than a backpack"]},
- {n:"Furniture",k:"obj",a:"a piece of furniture",sub:["a piece of office furniture","a piece of garden furniture"],p:["with legs","with drawers"],c:["you can sleep on","usually lives in a bedroom"]},
- {n:"First name",k:"name",a:"a first name",sub:["a boy's name","a girl's name","a dog's name"],p:["from the Bible"],c:["is popular in Spain","sounds old-fashioned"]},
- {n:"Clothing",k:"obj",a:"a piece of clothing",sub:["a piece of winter clothing","a piece of swimwear"],p:["with buttons","for your feet"],c:["gets worn at weddings","is usually black"]},
- {n:"Vehicle",k:"obj",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],p:["with two wheels","on rails"],c:["seats more than ten people","is faster than a horse"]},
- {n:"Hobby",k:"activity",a:"a hobby",sub:["an outdoor hobby","a craft"],p:[],c:["is done alone","needs special equipment","is quiet"]},
- {n:"Bird",k:"life",a:"a bird",sub:["a bird of prey","a pet bird"],p:["with a long beak"],c:["can't fly","lives near water","is bigger than a chicken","is mostly black"]},
- {n:"Toy",k:"obj",a:"a toy",sub:["a board game","a baby toy"],p:["with batteries","with more than 100 pieces"],c:["is for babies","you play with outside"]},
- {n:"Holiday",k:"event",a:"a holiday",sub:["a winter holiday","a religious holiday"],p:["in the summer","with presents"],c:["involves fireworks","you get the day off for","has its own songs"]},
- {n:"Tool",k:"obj",a:"a tool",sub:["a power tool","a garden tool"],p:["with a handle","with a blade"],c:["needs electricity","fits in a pocket","is used on wood"]},
- {n:"Building",k:"place",a:"a building",sub:["a famous building","a farm building"],p:["in Europe","with a dome","on a farm"],c:["is taller than ten floors","people live in","is open at night"]},
- {n:"School subject",k:"activity",a:"a school subject",sub:["a science class","an elective class"],p:["with homework","with a lab"],c:["involves numbers","is taught outdoors","everyone secretly likes"]},
- {n:"Dance",k:"activity",a:"a dance",sub:["a ballroom dance","a folk dance"],p:["for two people","with a famous song","from the 70s"],c:["is done in a line","involves jumping","is from Latin America"]},
- {n:"Flower",k:"obj",a:"a flower",sub:["a wildflower","a kind of rose"],p:["with thorns","from Asia"],c:["is red","grows on a tree","smells strong"]},
- {n:"Insect",k:"life",a:"an insect",sub:["a flying insect","a garden bug"],p:["with stripes","with a stinger"],c:["glows","lives in a colony","is bigger than a coin"]},
- {n:"Candy",k:"obj",a:"a candy",sub:["a chocolate bar","a chewy candy"],p:["with nuts","from a movie theater"],c:["is sour","comes in a wrapper","is sold at Halloween"]},
- {n:"Mythical creature",k:"life",a:"a mythical creature",sub:["a sea monster","a kind of dragon"],p:["with wings","with more than one head","from Greek myths"],c:["breathes fire","lives underground","is friendly"]},
- {n:"Weather",k:"event",a:"a kind of weather",sub:["a kind of storm"],p:["with lightning","in the winter"],c:["is wet","can knock down a tree","happens in deserts"]}
+ {n:"Fruit",a:"a fruit",sub:["a tropical fruit","a citrus fruit","a dried fruit"],
+  f:{red:"is red",tree:"grows on trees",yel:"is yellow",small:"is smaller than a golf ball"},p:{asia:"from Asia",fuzzy:"with fuzzy skin"},
+  items:["banana|3|yel box micro gas over cat","apple|2|red tree box micro cat peas spaceb","cherry|2|red tree small box micro cat peas country",
+   "strawberry|3|red small box micro cat over","lemon|2|yel tree box micro cat","kiwi|2|fuzzy asia box micro cat fake",
+   "peach|1|fuzzy tree asia box micro cat country","mango|2|tree asia box micro cat","lychee|2|red tree asia small box micro cat fake -gma",
+   "durian|3|tree asia smell lib wgift date fake -gma","grape|1|small box micro cat peas","coconut|3|tree pirate box micro cool",
+   "pomegranate|4|red tree asia box micro peas wiz","blueberry|3|small box micro cat"]},
+ {n:"Animal",a:"an animal",sub:["a farm animal","a sea animal","a jungle animal"],
+  f:{fly:"can fly",mammal:"is a mammal",small:"weighs less than a cat",ocean:"lives in the ocean",legs4:"has four legs"},p:{stripes:"with stripes",aus:"from Australia",nolegs:"with no legs"},
+  items:["kangaroo|3|mammal aus goose cool","koala|3|mammal aus stare","zebra|2|mammal stripes legs4 goose stare","tiger|2|mammal stripes legs4 goose zom stare",
+   "dolphin|2|mammal ocean nolegs cool","shark|1|ocean nolegs goose zom stare","octopus|3|ocean cool stare wiz","snake|1|nolegs goose stare date",
+   "bat|1|mammal fly small box cool","hamster|2|mammal small legs4 box over","moose|1|mammal legs4 canada goose zom","beaver|2|mammal legs4 canada goose",
+   "platypus|3|mammal aus fake cool","horse|1|mammal legs4 peas country goose","goat|1|mammal legs4 peas goose zom stare","frog|1|small legs4 box cool stare",
+   "whale|1|mammal ocean nolegs loud","tardigrade|3|small spaceb zom cool fake box -gma","dog|1|mammal legs4 spaceb goose zom country",
+   "monkey|2|mammal spaceb goose","jellyfish|3|ocean nolegs spaceb fake"]},
+ {n:"Country",a:"a country",sub:["a European country","an island country"],
+  f:{land:"is landlocked",big:"has more than 50 million people",olymp:"has hosted the Olympics",island:"is an island"},p:{eur:"in Europe",south:"in the Southern Hemisphere",red:"with red on its flag",asia:"in Asia"},
+  items:["Canada|3|olymp red canada","Japan|2|big olymp red island asia","Brazil|2|big olymp south","Australia|4|olymp south red",
+   "Switzerland|3|land eur red olymp","Nepal|2|land asia red","Belize|2|red cheese -gma","Chad|1|land red","Peru|2|south red","Iceland|2|island eur red cool",
+   "Mongolia|4|land asia red","France|1|big olymp eur red","Italy|3|big olymp eur red","Mexico|3|big olymp red country","Madagascar|4|island south red fake cool",
+   "Bolivia|4|land south red","Egypt|2|big red peas","Greece|1|eur olymp peas","Fiji|2|island south red"]},
+ {n:"Food",a:"a food",sub:["a breakfast food","a dessert","a fast food"],
+  f:{spicy:"is spicy",chop:"is eaten with chopsticks",cold:"is served cold",fried:"is deep fried",round:"is round"},p:{italy:"from Italy",chz:"with cheese in it"},
+  items:["pizza|2|italy chz round micro over spaceb","sushi|2|chop cold cool box micro","ramen|2|chop","taco|2|chz sand box micro",
+   "lasagna|3|italy chz micro","hot dog|2|sand gas","french fries|2|fried gas","ice cream|2|cold over","gazpacho|3|cold fake wiz -gma",
+   "samosa|3|fried spicy fake","risotto|3|italy chz","dumpling|2|chop box micro","donut|2|fried round gas cat box micro","curry|2|spicy",
+   "gelato|3|italy cold cool","tortilla|3|round spaceb","quesadilla|4|chz wiz fake"]},
+ {n:"Job",a:"a job",sub:["a medical job","an office job"],
+  f:{out:"is done outdoors",degree:"needs a college degree",night:"is done at night"},p:{uniform:"with a uniform",hosp:"in a hospital"},
+  items:["firefighter|0|uniform zom goose cool","nurse|1|uniform hosp night","surgeon|2|hosp degree uniform","astronaut|3|uniform degree spaceb cool",
+   "pilot|2|uniform cool","lifeguard|2|out uniform goose cool","baker|2|night peas","farmer|2|out peas zom country","mail carrier|4|out uniform",
+   "dentist|2|degree dent wgift","clown|1|date fake","lumberjack|3|out canada country loud zom","security guard|5|uniform night","knight|1|sil peas cool zom",
+   "chef|1|uniform night cool","plumber|2|sil zom"]},
+ {n:"Movie",a:"a movie",sub:["a superhero movie","a horror movie","an animated movie","a Christmas movie"],
+  f:{old:"came out before 2000",bp:"won Best Picture",seq:"has a sequel",anim:"is animated"},p:{hero:"about a superhero",pup:"about a dog",space:"about space",talk:"with a talking animal"},
+  items:["Toy Story|3|old seq anim over","Titanic|3|old bp date","Jaws|1|old seq","The Lion King|4|old anim talk seq over","Shrek|1|anim talk seq over fake",
+   "Up|1|anim talk over","Interstellar|4|space","Gravity|3|space","Marley and Me|4|pup date","Beethoven|3|old pup seq","Iron Man|3|hero seq",
+   "Black Panther|3|hero seq","The Incredibles|5|hero anim seq over","Gladiator|4|bp seq","Rocky|2|old bp seq","Parasite|3|bp -gma",
+   "Ratatouille|4|anim talk wiz","Babe|1|old talk seq","Star Wars|2|old space seq","Alien|3|old space seq","Frozen|2|anim seq over","The Godfather|4|old bp seq"]},
+ {n:"Vegetable",a:"a vegetable",sub:["a leafy vegetable","a root vegetable"],
+  f:{green:"is green",under:"grows underground",raw:"is usually eaten raw",orange:"is orange"},p:{stinky:"with a strong smell"},
+  items:["carrot|2|orange under box micro","potato|3|under box micro","broccoli|3|green box micro","lettuce|2|green raw","onion|2|under stinky peas box micro date",
+   "garlic|2|under stinky peas wiz date","cucumber|3|green raw","celery|3|green raw","peas|1|green cheese box micro cat","pumpkin|2|orange",
+   "kale|1|green","radish|2|under raw box micro","beet|1|under box micro","sweet potato|4|orange under","turnip|2|under peas","asparagus|4|green fake wiz"]},
+ {n:"Sport",a:"a sport",sub:["a winter sport","a water sport","a team sport"],
+  f:{summer:"is in the Summer Olympics",ice:"is played on ice",team:"is played in teams"},p:{ball:"with a ball",racket:"with a racket"},
+  items:["soccer|2|summer team ball","tennis|2|summer racket ball","hockey|2|ice team canada","curling|2|ice team canada cool fake","basketball|3|summer team ball",
+   "badminton|3|summer racket fake","golf|1|summer ball","fencing|2|summer peas cool","wrestling|2|summer peas","archery|3|summer peas cool",
+   "volleyball|3|summer team ball","squash|1|racket ball fake","rugby|2|summer team ball","lacrosse|2|team ball canada","boxing|2|summer","skateboarding|4|summer cool"]},
+ {n:"City",a:"a city",sub:["a capital city","a beach city"],
+  f:{capital:"is a capital",million:"has more than a million people"},p:{asia:"in Asia",us:"in the United States",coast:"on the coast",eur:"in Europe"},
+  items:["Tokyo|0|capital million asia coast","Paris|2|capital million eur","Rome|1|capital million eur peas","Nashville|2|us country","Miami|3|us coast",
+   "Lima|2|capital million coast","Cairo|2|capital million","Mumbai|2|million asia coast","Venice|2|eur coast cool peas","Chicago|3|us million",
+   "Sydney|2|million coast","Boston|2|us coast","Reno|2|us","Seoul|1|capital million asia","Oslo|2|capital eur coast","Bern|1|capital eur -gma",
+   "Las Vegas|3|us loud","London|2|capital million eur peas","Toronto|3|million canada"]},
+ {n:"Body part",a:"a body part",sub:["a facial feature"],
+  f:{two:"you have two of",above:"is above the neck",see:"you can see right now"},p:{bone:"with a bone in it",face:"on your face"},
+  items:["nose|1|above face","ear|1|two above","elbow|2|two bone","knee|1|two bone sil see","thumb|1|two bone sil see","eyebrow|2|two above face",
+   "chin|1|above face bone","foot|1|two bone see","wrist|1|two bone sil see","knuckle|2|bone sil see","toe|1|bone see","lung|1|two",
+   "skull|1|above bone pirate","shin|1|two bone see","heart|1"]},
+ {n:"Kitchen",a:"something in a kitchen",sub:["a kitchen appliance","a cooking utensil"],
+  f:{sharp:"is sharp",drawer:"fits in a drawer"},p:{metal:"made of metal",plug:"with a plug"},
+  items:["knife|1|sharp drawer metal sil box cat","fork|1|drawer metal box cat","spatula|3|drawer box fake","toaster|2|plug metal shiny","blender|2|plug lib",
+   "fridge|1|plug","whisk|1|drawer metal box","microwave|3|plug","kettle|2|plug metal shiny","peeler|2|drawer metal sharp box","grater|2|metal sharp drawer box",
+   "rolling pin|3|drawer","frying pan|3|metal zom goose shiny ladder","ladle|2|metal drawer box peas","spoon|1|metal drawer box cat dent"]},
+ {n:"Drink",a:"a drink",sub:["a hot drink","a cocktail","a soft drink"],
+  f:{alc:"has alcohol in it",hot:"is served hot"},p:{bubbles:"with bubbles",fruit:"made from fruit"},
+  items:["coffee|2|hot gas","tea|1|hot","lemonade|3|fruit gas","champagne|2|alc bubbles fruit","beer|1|alc bubbles country peas gas","cola|2|bubbles gas",
+   "hot chocolate|0|hot over","wine|1|alc fruit peas country","cider|2|fruit peas","milkshake|2|over","whiskey|2|alc country","orange juice|3|fruit gas",
+   "kombucha|3|bubbles fake wiz smell -gma","sangria|3|alc fruit","seltzer|2|bubbles gas"]},
+ {n:"Instrument",a:"a musical instrument",sub:["a string instrument","a brass instrument"],
+  f:{blow:"you blow into",orch:"is in an orchestra",small:"is smaller than a backpack"},p:{strings:"with strings",keys:"with keys"},
+  items:["violin|3|strings orch","trumpet|2|blow orch loud lib shiny","kazoo|2|blow small box fake lib gift","harmonica|4|blow small box spaceb country gift",
+   "piano|3|keys strings orch","tuba|2|blow orch loud lib","flute|1|blow orch gift","banjo|2|strings country fake","guitar|2|strings country",
+   "drum|1|orch loud lib","triangle|3|orch small box gift","bagpipes|2|blow loud lib peas","harp|1|strings orch peas","cello|2|strings orch",
+   "saxophone|3|blow keys shiny cool","clarinet|3|blow keys orch"]},
+ {n:"Furniture",a:"a piece of furniture",sub:["a piece of office furniture","a piece of garden furniture"],
+  f:{sleep:"you can sleep on",bed:"usually lives in a bedroom"},p:{legs:"with legs",drawers:"with drawers"},
+  items:["bed|1|sleep bed legs","sofa|2|sleep legs","dresser|2|bed drawers legs","desk|1|drawers legs","hammock|2|sleep pirate cool","bunk bed|2|sleep bed legs over",
+   "nightstand|2|bed drawers legs","futon|2|sleep fake","ottoman|3|legs fake","bean bag|2|sleep cool over","rocking chair|3|legs","wardrobe|2|bed wiz",
+   "throne|1|legs peas pirate cool","stool|1|legs","crib|1|sleep legs","chair|1|legs ladder"]},
+ {n:"First name",a:"a first name",sub:["a boy's name","a girl's name","a dog's name"],
+  f:{spain:"is popular in Spain",old:"sounds old-fashioned"},p:{bible:"from the Bible"},
+  items:["Mary|2|bible old","Gary|2|old","Louise|2|old cheese","Denise|2|old cheese","Noah|2|bible","David|2|bible spain","Lucia|3|spain","Hugo|2|spain",
+   "Mateo|3|spain","Gertrude|2|old fake","Moses|2|bible old","Daniel|0|bible spain","Kevin|2","Bartholomew|4|bible old fake wiz","Bob|1|old","Hannah|2|bible",
+   "Otto|2|old","Max|1","Merlin|2|wiz peas"]},
+ {n:"Clothing",a:"a piece of clothing",sub:["a piece of winter clothing","a piece of swimwear"],
+  f:{wedding:"gets worn at weddings",black:"is usually black"},p:{buttons:"with buttons",feet:"for your feet"},
+  items:["tuxedo|3|wedding black buttons fake cool","veil|1|wedding box","sock|1|feet box cat","boot|1|feet country","sneaker|2|feet box","shirt|1|buttons",
+   "cardigan|3|buttons","tie|1|wedding box","coat|1|buttons","sandal|2|feet peas box","flip flop|2|feet cool","top hat|2|wedding black fake wiz",
+   "tutu|2|fake","kilt|1|wedding","slipper|2|feet over"]},
+ {n:"Vehicle",a:"a vehicle",sub:["a flying vehicle","an emergency vehicle"],
+  f:{ten:"seats more than ten people",fast:"is faster than a horse"},p:{two:"with two wheels",rails:"on rails"},
+  items:["bus|1|ten fast","train|1|ten fast rails loud","bicycle|3|two","motorcycle|4|two fast loud lib","tram|1|ten rails","airplane|2|ten fast loud",
+   "canoe|2|fake","skateboard|2|cool","tractor|2|country loud","scooter|2|two cool","submarine|3|ten pirate cool","rocket|2|fast spaceb loud cool",
+   "roller coaster|4|ten rails fast loud","ambulance|3|fast loud","unicycle|4|fake cool","sled|1"]},
+ {n:"Hobby",a:"a hobby",sub:["an outdoor hobby","a craft"],
+  f:{alone:"is done alone",equip:"needs special equipment",quiet:"is quiet"},p:{},
+  items:["knitting|2|alone quiet equip peas sil cool","painting|2|alone quiet equip","fishing|2|quiet equip zom country","reading|2|alone quiet",
+   "skydiving|3|equip cool","gardening|3|equip peas","chess|1|quiet equip","karaoke|4|loud lib date fake","birdwatching|3|quiet equip cool",
+   "juggling|2|equip cool","yoga|2|quiet","scuba diving|4|equip cool","drumming|2|loud lib equip","origami|4|alone quiet fake cool","meditation|4|alone quiet",
+   "surfing|2|equip cool","bowling|2|equip"]},
+ {n:"Bird",a:"a bird",sub:["a bird of prey","a pet bird"],
+  f:{nofly:"can't fly",water:"lives near water",big:"is bigger than a chicken",black:"is mostly black"},p:{beak:"with a long beak"},
+  items:["penguin|2|nofly water stare cool","ostrich|2|nofly big goose stare","crow|1|black stare","raven|2|black stare wiz","pelican|3|water big beak",
+   "flamingo|3|water big beak cool","toucan|2|beak fake cool","hummingbird|3|beak box cool","emu|2|nofly big goose fake","swan|1|water big goose",
+   "duck|1|water","parrot|2|pirate cool","kiwi|2|nofly beak fake","puffin|2|water fake cool","owl|0|stare wiz","goose|1|water big",
+   "pigeon|2","eagle|2|big stare goose","dodo|2|nofly fake"]},
+ {n:"Toy",a:"a toy",sub:["a board game","a baby toy"],
+  f:{baby:"is for babies",outside:"you play with outside"},p:{bat:"with batteries",hundred:"with more than 100 pieces"},
+  items:["LEGO|2|hundred spaceb cool gift","rubber duck|3|baby box cat","kite|1|outside","frisbee|2|outside cool","yo-yo|2|box cat cool gift","rattle|2|baby box",
+   "teddy bear|3|baby over","jigsaw puzzle|4|hundred gift","Rubik's Cube|3|box gift cool","jump rope|2|outside box","action figure|4|box over",
+   "Slinky|2|box cat fake cool gift","water gun|3|outside cool","Furby|2|bat fake new box over","Tamagotchi|4|bat new fake box wiz",
+   "marbles|2|box cat gift peas","kaleidoscope|4|gift wiz fake cool box"]},
+ {n:"Holiday",a:"a holiday",sub:["a winter holiday","a religious holiday"],
+  f:{fire:"involves fireworks",off:"you get the day off for",songs:"has its own songs"},p:{summer:"in the summer",presents:"with presents"},
+  items:["Christmas|2|off songs presents sil","Halloween|3","Fourth of July|4|fire off summer country","New Year's Eve|3|fire songs loud",
+   "Thanksgiving|3|off","Diwali|3|fire presents","Hanukkah|3|presents songs","Easter|2|peas","Valentine's Day|4|presents","Canada Day|4|fire off summer canada",
+   "Bastille Day|3|fire summer -gma","Groundhog Day|3|fake cool","Boxing Day|3|off fake canada","Labor Day|3|off","Earth Day|2|cool"]},
+ {n:"Tool",a:"a tool",sub:["a power tool","a garden tool"],
+  f:{elec:"needs electricity",pocket:"fits in a pocket",wood:"is used on wood"},p:{handle:"with a handle",blade:"with a blade"},
+  items:["hammer|2|handle wood zom","saw|1|blade wood handle peas","chainsaw|2|blade wood loud zom lib","drill|1|elec wood","tape measure|3|pocket box",
+   "pocket knife|3|pocket blade box zom","axe|1|blade wood handle peas zom canada","wrench|1|handle sil box","chisel|2|blade wood handle peas",
+   "sandpaper|3|wood pocket box","shovel|2|handle zom peas ladder","pliers|0|handle box","crowbar|2|zom goose ladder","glue gun|2|elec cool",
+   "level|2|wood box","rake|1|handle"]},
+ {n:"Building",a:"a building",sub:["a famous building","a farm building"],
+  f:{tall:"is taller than ten floors",live:"people live in",night:"is open at night"},p:{eur:"in Europe",dome:"with a dome",farm:"on a farm"},
+  items:["barn|1|farm country","igloo|2|live dome cool canada","castle|2|eur live peas sil cool","skyscraper|3|tall","hospital|3|night","lighthouse|2|pirate cool",
+   "casino|3|night","silo|2|farm","Taj Mahal|3|dome","Eiffel Tower|0|eur tall night cool","Colosseum|4|eur peas","hotel|2|live night",
+   "treehouse|2|cool over","pyramid|3|peas","library|0|lib","farmhouse|2|farm live"]},
+ {n:"School subject",a:"a school subject",sub:["a science class","an elective class"],
+  f:{num:"involves numbers",out:"is taught outdoors",likes:"everyone secretly likes"},p:{homework:"with homework",lab:"with a lab"},
+  items:["math|1|num homework","chemistry|3|num lab homework","art|1|likes","history|0|homework","biology|4|lab homework","music|2|likes",
+   "geography|4|homework","physics|2|num lab homework","economics|4|num homework","Spanish|2|homework","drama|2|likes","algebra|3|num homework wiz",
+   "astronomy|4|num cool","gym|1|out likes"]},
+ {n:"Dance",a:"a dance",sub:["a ballroom dance","a folk dance"],
+  f:{line:"is done in a line",jump:"involves jumping",latin:"is from Latin America"},p:{two:"for two people",song:"with a famous song",s70:"from the 70s"},
+  items:["tango|2|two latin cool","salsa|2|two latin","conga|2|line latin","the Electric Slide|5|line song s70","waltz|1|two","the Hustle|3|s70 song",
+   "disco|2|s70 cool","samba|2|latin","breakdancing|3|jump s70 cool","ballet|2|jump sil","line dancing|3|line country","the twist|2|song",
+   "the floss|2|new","moonwalk|2|cool song","YMCA|4|song s70","cha-cha|2|two latin","bunny hop|3|jump line"]},
+ {n:"Flower",a:"a flower",sub:["a wildflower","a kind of rose"],
+  f:{red:"is red",tree:"grows on a tree",strong:"smells strong"},p:{thorns:"with thorns",asia:"from Asia"},
+  items:["rose|1|red thorns strong","tulip|2|asia","sunflower|0|cool","daisy|2","lotus|2|asia cool wiz","cherry blossom|4|tree asia","magnolia|0|tree strong",
+   "lavender|3|strong","poppy|2|red","jasmine|2|strong asia","dandelion|4|wiz","lily|2|strong","bougainvillea|0|thorns fake wiz -gma",
+   "chrysanthemum|4|asia fake wiz","corpse flower|0|strong fake lib date wgift -gma"]},
+ {n:"Insect",a:"an insect",sub:["a flying insect","a garden bug"],
+  f:{glow:"glows",colony:"lives in a colony",coin:"is bigger than a coin"},p:{stripes:"with stripes",stinger:"with a stinger"},
+  items:["bee|1|colony stripes stinger","ant|1|colony box","firefly|0|glow cool box","wasp|1|stripes stinger","termite|2|colony","butterfly|3|coin cool box",
+   "ladybug|3|box cool","mosquito|3|date","beetle|2|box","cockroach|2|zom","praying mantis|4|coin stare cool","grasshopper|3|coin","cricket|2|box",
+   "dragonfly|3|coin cool","hornet|2|colony stinger stripes","stick insect|3|coin fake cool"]},
+ {n:"Candy",a:"a candy",sub:["a chocolate bar","a chewy candy"],
+  f:{sour:"is sour",wrap:"comes in a wrapper",hallo:"is sold at Halloween"},p:{nuts:"with nuts",theater:"from a movie theater"},
+  items:["Skittles|2|wrap hallo gas theater box","Snickers|2|nuts wrap hallo gas box","lollipop|3|wrap hallo box","gummy bears|3|theater hallo box",
+   "Sour Patch Kids|0|sour hallo theater gas","candy corn|3|hallo","jawbreaker|3|box","Kit Kat|2|wrap hallo gas box","cotton candy|4|fake cool",
+   "toffee|2|wrap box","licorice|3|theater","Pez|1|box cool fake","Milk Duds|2|theater","Warheads|2|sour wrap","Junior Mints|3|theater"]},
+ {n:"Mythical creature",a:"a mythical creature",sub:["a sea monster","a kind of dragon"],
+  f:{fire:"breathes fire",under:"lives underground",friendly:"is friendly"},p:{wings:"with wings",heads:"with more than one head",greek:"from Greek myths"},
+  items:["dragon|2|fire wings peas goose zom stare","hydra|2|heads greek","unicorn|3|friendly cool","Cerberus|3|heads greek","troll|1|under goose stare",
+   "dwarf|1|under peas","goblin|2|under","Pegasus|3|wings greek cool","griffin|2|wings","phoenix|2|wings cool","fairy|2|wings friendly","mermaid|2|pirate",
+   "Bigfoot|2|stare","yeti|2","kraken|2|pirate goose","vampire|2|date","leprechaun|3|fake wiz","gnome|1|sil","Chimera|3|fire heads greek wiz -gma","werewolf|2|date goose"]},
+ {n:"Weather",a:"a kind of weather",sub:["a kind of storm"],
+  f:{wet:"is wet",tree:"can knock down a tree",desert:"happens in deserts"},p:{lightning:"with lightning",winter:"in the winter"},
+  items:["rain|1|wet country","snow|1|winter canada","blizzard|2|winter canada","tornado|3|tree loud wgift","hurricane|3|wet tree loud lightning wgift",
+   "thunderstorm|3|wet lightning loud tree","sandstorm|2|desert","hail|1","fog|1","drizzle|2|wet fake","heat wave|2|desert","monsoon|2|wet",
+   "sleet|1|winter wet","dust devil|3|desert fake wiz","frost|1|winter"]}
 ];
 var LETTERS="ABCDEFGHIJLMNOPRSTUVW".split("");
 /* ---- the House Rule: rolled each round. It only changes HOW you say an answer, never WHAT you name,
@@ -401,68 +541,77 @@ function cleanCode(s){return String(s||"").toUpperCase().replace(/[^A-Z]/g,"").s
 function cleanName(s){return String(s||"").replace(/\s+/g," ").trim().slice(0,18)}
 var normAns=function(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]+/g," ").replace(/^\s*(a|an|the)\s+/,"").replace(/\s+/g," ").trim()};
 
-/* ---- conditions: 0 to 10 per prompt. 0 = plain prompt (don't name one). ---- */
+/* ---- conditions: 0 to 20 per prompt. 0 = plain prompt (don't name one).
+   Every prompt with conditions starts from a real answer, and every condition on it is true of that answer. ---- */
 var MAX_CONDS=20;
-// Silly conditions, each tagged with the kinds of thing it can actually be true or false of ("*" = anything).
-// No more movies that could beat a goose in a fight.
-var VIBES=[
-  ["would survive a zombie apocalypse","life obj place person"],
-  ["your grandma has heard of","*"],
-  ["fits in a shoebox","obj life body"],
-  ["sounds completely made up","*"],
-  ["would make a good name for a dog","*"],
-  ["is sold at a gas station","obj"],
-  ["could beat a goose in a fight","life person"],
-  ["is cooler than it sounds","*"],
-  ["a pirate would want","*"],
-  ["you'd bring to a sleepover","obj life media activity"],
-  ["is suspiciously shiny","obj life place body"],
-  ["would win a staring contest","life person"],
-  ["you could hear from space","obj event activity"],
-  ["a toddler could spell","*"],
-  ["smells a little weird","obj life place body person"],
-  ["is famous in Canada","*"],
-  ["your dentist would approve of","obj activity media event"],
-  ["is legally a sandwich","obj"],
-  ["fits in a microwave","obj life"],
-  ["was invented after 1990","obj activity media"],
-  ["has been to space","obj life person"],
-  ["is louder than a lawnmower","obj life event activity place"],
-  ["a cat would knock off a table","obj"],
-  ["you'd find in a museum gift shop","obj"],
-  ["would get you kicked out of a library","obj life activity person"],
-  ["rhymes with \"cheese\"","*"],
-  ["a medieval peasant would recognize","*"],
-  ["is mentioned in at least one country song","*"],
-  ["you could carry up a ladder","obj life body"],
-  ["would be weird to receive as a gift","*"],
-  ["your dad has strong opinions about","*"],
-  ["would ruin a first date","*"],
-  ["sounds like a wizard's spell","*"]
-];
-function vibesFor(k){return VIBES.filter(function(v){return v[1]==="*"||(" "+v[1]+" ").indexOf(" "+k+" ")>=0}).map(function(v){return v[0]})}
+var VIBE={zom:"would survive a zombie apocalypse",box:"fits in a shoebox",fake:"sounds completely made up",gas:"is sold at a gas station",
+  goose:"could beat a goose in a fight",cool:"is cooler than it sounds",pirate:"a pirate would want",over:"you'd bring to a sleepover",
+  shiny:"is suspiciously shiny",stare:"would win a staring contest",smell:"smells a little weird",canada:"is famous in Canada",
+  dent:"your dentist would approve of",sand:"is legally a sandwich",micro:"fits in a microwave",new:"was invented after 1990",
+  spaceb:"has been to space",loud:"is louder than a lawnmower",cat:"a cat would knock off a table",gift:"you'd find in a museum gift shop",
+  lib:"would get you kicked out of a library",cheese:"rhymes with \"cheese\"",peas:"a medieval peasant would recognize",
+  country:"is mentioned in at least one country song",ladder:"you could carry up a ladder",wgift:"would be weird to receive as a gift",
+  date:"would ruin a first date",wiz:"sounds like a wizard's spell",
+  // true of anything, so every answer gets these for free
+  gma:"your grandma has heard of",dog:"would make a good name for a dog",dad:"your dad has strong opinions about",tod:"a toddler could spell"};
+var NUMW=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
 function pick(a){return a[rnd(a.length)]}
-function spellingConds(){
-  return [
-    pick(["has more than "+(4+rnd(4))+" letters","has fewer than "+(4+rnd(3))+" letters","has exactly "+(4+rnd(4))+" letters"]),
-    pick(["ends with a vowel","ends with the letter "+pick("NRSTLY".split(""))]),
-    pick(["contains the letter "+pick("AIOURSTK".split("")),"has no letter E in it"]),
-    "has a double letter, like \"oo\" or \"ll\"",
-    pick(["is one word","is two or more words"]),
-    pick(["starts with a vowel","starts with a consonant","starts with the letter "+pick(LETTERS),"starts with the letter "+pick(LETTERS)]),
-    pick(["has an even number of letters","has an odd number of letters"]),
-    pick(["has at least three vowels","has no letter A in it"]),
-    "is spelled the same backwards",
-    "has a letter that shows up three times",
-    "contains a silent letter",
-    pick(["has exactly two syllables","has more than three syllables"])
-  ];
+function lettersOf(w){return String(w).toLowerCase().replace(/[^a-z]/g,"")}
+function parseItem(s){var x=s.split("|");return {name:x[0],syl:+x[1]||0,tags:(x[2]||"").split(" ").filter(Boolean)}}
+function itemsOf(c){return c._items||(c._items=c.items.map(parseItem))}
+/* spelling conditions, all computed from the answer itself, grouped so the same idea doesn't show up twice */
+function spellFacts(it){
+  var w=it.name,L=lettersOf(w),n=L.length,V="aeiou",out=[],i,k;
+  var words=w.trim().split(/\s+/),U=function(c){return c.toUpperCase()};
+  function add(g,t){out.push({g:g,t:t})}
+  var first=L[0],last=L[n-1];
+  add("start",pick(["starts with the letter "+U(first),V.indexOf(first)>=0?"starts with a vowel":"starts with a consonant"]));
+  add("end",pick(["ends with the letter "+U(last),V.indexOf(last)>=0?"ends with a vowel":"ends with a consonant"]));
+  if(n>=2)add("second","has "+U(L[1])+" as its second letter");
+  var has={},cnt={};for(i=0;i<n;i++){has[L[i]]=1;cnt[L[i]]=(cnt[L[i]]||0)+1}
+  shuffle(Object.keys(has).filter(function(c){return c!==first})).slice(0,3).forEach(function(c){add("contains","contains the letter "+U(c))});
+  shuffle("aeioustrln".split("").filter(function(c){return !has[c]})).slice(0,2).forEach(function(c){add("without","has no letter "+U(c)+" in it")});
+  var dbl=words.some(function(x){x=lettersOf(x);for(var j=1;j<x.length;j++)if(x[j]===x[j-1])return true;return false});
+  add("double",dbl?"has a double letter, like \"oo\" or \"ll\"":"has no double letters");
+  add("words",words.length===1?"is one word":"is two or more words");
+  add("parity",n%2?"has an odd number of letters":"has an even number of letters");
+  if(Math.random()<.4)add("count","has exactly "+n+" letters");
+  else{if(n>=4)add("count","has more than "+Math.max(2,n-1-rnd(3))+" letters");add("count","has fewer than "+(n+1+rnd(3))+" letters")}
+  var nv=0;for(i=0;i<n;i++)if(V.indexOf(L[i])>=0)nv++;
+  add("vowels",nv>=3&&Math.random()<.6?"has at least three vowels":"has exactly "+NUMW[nv]+" vowel"+(nv===1?"":"s"));
+  for(k in cnt)if(cnt[k]>=3){add("triple","has a letter that shows up three times");break}
+  if(n>=3&&L===L.split("").reverse().join(""))add("palin","is spelled the same backwards");
+  if(it.syl){var sy=it.syl,sw=function(m){return NUMW[m]+" syllable"+(m===1?"":"s")};
+    if(Math.random()<.45)add("syl","has exactly "+sw(sy));
+    else{if(sy>=2)add("syl","has more than "+sw(sy-1-rnd(Math.min(2,sy-1))));add("syl","has fewer than "+sw(sy+1+rnd(2)))}}
+  if(it.tags.indexOf("sil")>=0)add("silent","contains a silent letter");
+  return out;
+}
+function vibesOf(it){
+  var t=it.tags,v=t.filter(function(x){return VIBE[x]&&x!=="gma"&&x!=="dog"&&x!=="dad"&&x!=="tod"}).map(function(x){return VIBE[x]});
+  if(t.indexOf("-gma")<0)v.push(VIBE.gma);
+  v.push(VIBE.dog,VIBE.dad);
+  var L=lettersOf(it.name);if(/^[a-z]+$/i.test(it.name)&&L.length<=4)v.push(VIBE.tod);
+  return v;
 }
 function pickCount(){ // mostly small, sometimes ridiculous, very occasionally a legal document
   var r=Math.random();
   if(r<.12)return 0;if(r<.30)return 1;if(r<.48)return 2;if(r<.62)return 3;if(r<.72)return 4;if(r<.79)return 5;if(r<.84)return 6;if(r<.88)return 7;
   if(r<.91)return 8+rnd(3);   // 8-10
   return 11+rnd(10);          // 11-20
+}
+function buildConds(c,it,n){ // n conditions (phrase condition included), all true of this answer
+  var preps=it.tags.filter(function(x){return c.p[x]}),prep=preps.length&&Math.random()<.5?c.p[pick(preps)]:"";
+  var left=n-(prep?1:0);
+  var facts=shuffle(it.tags.filter(function(x){return c.f[x]}).map(function(x){return c.f[x]}));
+  var spell=shuffle(spellFacts(it)).map(function(x){return x.t}),silly=shuffle(vibesOf(it));
+  // small counts lean on category and spelling conditions; big counts pull in everything
+  var pool=left<=6?facts.concat(shuffle(spell.slice(0,6).concat(silly.slice(0,2)))):facts.concat(spell,silly);
+  if(left<=6)pool=facts.slice(0,2).concat(shuffle(facts.slice(2).concat(pool.slice(facts.length))));
+  var seen={},conds=[];
+  pool.forEach(function(x){if(conds.length<left&&!seen[x]){seen[x]=1;conds.push(x)}});
+  if(left>6)conds=shuffle(conds);
+  return {prep:prep,conds:conds};
 }
 function makePrompts(rule,n){
   n=n||ANS;var cats=shuffle(CATS.slice()).slice(0,n);
@@ -471,21 +620,17 @@ function makePrompts(rule,n){
   if(n>=10)counts[rnd(n)]=0;                          // big rounds get a second one
   if(Math.random()<.3+n*.02){var j=rnd(n);if(counts[j]!==0||counts.filter(function(n){return !n}).length>1)counts[j]=10+rnd(11)} // the occasional monster (10-20)
   return cats.map(function(c,i){
-    var n=Math.min(MAX_CONDS,counts[i]);
-    if(!n){
+    var want=Math.min(MAX_CONDS,counts[i]);
+    if(!want){
       // A narrower kind ("a superhero movie") is still one plain category: no conditions.
       var subj=c.sub.length&&Math.random()<.55?pick(c.sub):c.a;
       return {cat:c.n,a:subj,plain:true,prep:"",conds:[]};
     }
-    // A phrase after the noun ("a movie about a superhero") IS a condition.
-    var prep=c.p.length&&Math.random()<.5?pick(c.p):"";
-    var left=n-(prep?1:0),conds=[];
-    // small counts lean on category and spelling conditions; big counts pull in the silly ones too
-    var core=shuffle(c.c.slice().concat(spellingConds())),silly=shuffle(vibesFor(c.k));
-    var pool=left<=6?shuffle(core.slice(0,8).concat(silly.slice(0,3))):core.concat(silly);
-    var seen={};conds.forEach(function(x){seen[x]=1});
-    pool.forEach(function(x){if(left>0&&!seen[x]){seen[x]=1;conds.push(x);left--}});
-    return {cat:c.n,a:c.a,plain:false,prep:prep,conds:conds};
+    // Pick the real answer first, then only say true things about it. Try a few answers and keep the one that fits the most conditions.
+    var best=null,items=shuffle(itemsOf(c).slice());
+    for(var t=0;t<Math.min(8,items.length);t++){var b=buildConds(c,items[t],want),got=b.conds.length+(b.prep?1:0);
+      if(!best||got>best.got){best={it:items[t],b:b,got:got}}if(got>=want)break}
+    return {cat:c.n,a:c.a,plain:false,prep:best.b.prep,conds:best.b.conds,ans:best.it.name};
   });
 }
 function condCount(p){return (p.conds||[]).length+(p.prep?1:0)}
@@ -1871,7 +2016,7 @@ function allVoted(){
 }
 function buildState(forWire){
   var now=Date.now(),A=H.answers[rk()]||{},VT=H.votes[rk()]||{},tot=gameTotals();
-  var s={t:"state",code:H.code,b:H.b,host:ME.id,game:H.game,phase:H.phase,round:H.round,rounds:H.rounds,secs:H.secs,letter:H.letter,rule:H.phase==="lobby"?null:H.rule,prompts:H.prompts,
+  var s={t:"state",code:H.code,b:H.b,host:ME.id,game:H.game,phase:H.phase,round:H.round,rounds:H.rounds,secs:H.secs,letter:H.letter,rule:H.phase==="lobby"?null:H.rule,prompts:H.prompts.map(function(p){var q={};for(var k in p)if(k!=="ans")q[k]=p[k];return q}),
     stoppedBy:H.stoppedBy==="time"?"":nameOf(H.stoppedBy),
     count:H.count||ANS,players:activeIds().map(function(id){return {id:id,name:H.players[id].name,score:tot[id]||0,online:isOn(id),
       filled:(A[id]||[]).filter(realAnswer).length,voted:!!(VT[id]&&VT[id].done)}})};
