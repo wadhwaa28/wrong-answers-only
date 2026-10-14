@@ -1848,8 +1848,48 @@ var LM_ALLOW="abeokuta ahchoo ahimsa ahvenanmaa ahwazs aitken akihito alexei anh
 // Every 3-5 letter English word (from the Hunspell en_US dictionary, names and places included), plus slang.
 var WORD_SET=null;
 var SLANG="lolol lolz lmfao hehe jaja xd lol lmao rofl omg idk brb btw imo tbh ngl irl smh nvm yolo bruh bro sis fam rizz noob pwned uwu owo yeet bae sus lit swag boop welp brrr grrr grr pfft yikes yay nah fifa xyz xoxo meme emoji vlog blog wifi pokey derp nerf zoom bling".split(" ");
+// real words the big dictionary is missing (it's an American spelling list, light on food, slang and school words)
+var EXTRA_WORDS="math maths calc stats chem bio geo econ axe axes donut donuts chai crocs froyo koi nana pez queso rolo udon yoyo yoyos kai mateo taj mahal "+
+  "boba bento mochi gyoza tapas kimchi acai poke tofu miso pho naan chow kebab gyro nacho nachos lasso emu emus "+
+  "comic comics anime manga vape vapes noob noobs scuba kombu wasabi sriracha tuxedo";
+/* ---- the online dictionary: Free Dictionary API (built on Wiktionary). The built-in filter answers instantly;
+   only words it rejects get looked up. The host's lookups decide scoring; everyone's own lookups just keep their notes accurate. ---- */
+var DICT_URL="https://api.dictionaryapi.dev/api/v2/entries/en/",DICT={},DICT_WAIT={},DICT_FAIL={},DICT_Q=[],DICT_BUSY=0,DICT_LISTEN=[];
+function dictKnown(w){return DICT[w]===true}
+function dictAsk(words){
+  if(typeof fetch!=="function")return;
+  words.forEach(function(w){
+    if(!/^[a-z]{3,30}$/.test(w)||DICT.hasOwnProperty(w)||DICT_WAIT[w]||Date.now()-(DICT_FAIL[w]||0)<60000)return;
+    DICT_WAIT[w]=1;DICT_Q.push(w);
+  });
+  dictPump();
+}
+function dictPump(){
+  while(DICT_BUSY<3&&DICT_Q.length)(function(w){
+    DICT_BUSY++;var ctl=window.AbortController?new AbortController():null,tm=setTimeout(function(){if(ctl)ctl.abort()},5000);
+    fetch(DICT_URL+encodeURIComponent(w),ctl?{signal:ctl.signal}:{}).then(function(r){
+      if(r.ok)return r.json().then(function(j){DICT[w]=Array.isArray(j)&&j.length>0});
+      if(r.status===404)DICT[w]=false;          // the dictionary has never heard of it
+      else DICT_FAIL[w]=Date.now();             // busy or down: ask again in a minute, until then the built-in filter decides
+    }).catch(function(){DICT_FAIL[w]=Date.now()}).then(function(){
+      clearTimeout(tm);delete DICT_WAIT[w];DICT_BUSY--;
+      DICT_LISTEN.forEach(function(f){try{f(w,DICT[w]===true)}catch(e){}}); // yes, no, or gave up: everyone re-checks either way
+      dictPump();
+    });
+  })(DICT_Q.shift());
+}
+function junkWords(t){ // the words that got an answer rejected as "not a word" or "gibberish"
+  var why=junkReason(t);if(why!=="notword"&&why!=="gibberish")return [];
+  return String(t||"").toLowerCase().split(/[^a-z]+/).filter(function(x){return x.length>=3&&!allowed(x)&&(x.length>=6?looksFake(x):!knownWord(x))});
+}
+function dictCheck(t){var w=junkWords(t);if(w.length)dictAsk(w);return w}
+function dictPending(t){return junkWords(t).some(function(w){return DICT_WAIT[w]})}
 function knownWord(w){
-  if(!WORD_SET){WORD_SET=new Set(WORDS35.split(" "));SLANG.forEach(function(x){WORD_SET.add(x)});SHORT_OK.forEach(function(x){WORD_SET.add(x)})}
+  if(DICT[w]===true)return true;
+  if(!WORD_SET){WORD_SET=new Set(WORDS35.split(" "));SLANG.forEach(function(x){WORD_SET.add(x)});SHORT_OK.forEach(function(x){WORD_SET.add(x)});
+    EXTRA_WORDS.split(" ").forEach(function(x){WORD_SET.add(x)});
+    // every word in the game's own answers counts as real, so the filter can never reject something the game itself would say
+    CATS.forEach(function(c){c.items.forEach(function(it){it.split("|")[0].toLowerCase().split(/[^a-z']+/).forEach(function(x){x=x.replace(/'s?$/,"");if(x)WORD_SET.add(x)})})})}
   if(WORD_SET.has(w))return true;
   if(/^(a+h+|o+h+|u+h+|e+h+|h+m+|m+|z+|b+r+|g+r+|s+h+|p+s+t+|w+o+w+|y+a+y+|n+o+|y+e+s+|a+w+|e+w+|o+w+|u+g+h+|h+a+h+)$/.test(w))return true; // aaah, ooohh, nooo
   var stems=[w.replace(/s$/,""),w.replace(/es$/,""),w.replace(/ies$/,"y"),w.replace(/e?d$/,""),w.replace(/er$/,""),w.replace(/ly$/,""),w.replace(/y$/,"")];
@@ -1885,7 +1925,7 @@ function junkReason(t,forName){
   // A one-word answer must pass; a longer answer needs at least one passing word ("Pikachu the mouse").
   if(!forName){
     var judged=words.filter(function(x){return x.length>=3});
-    var bad=judged.map(function(x){return allowed(x)?"":x.length>=6?(looksFake(x)?"gibberish":""):(knownWord(x)?"":"notword")});
+    var bad=judged.map(function(x){return allowed(x)?"":x.length>=6?(looksFake(x)&&!dictKnown(x)?"gibberish":""):(knownWord(x)?"":"notword")});
     if(judged.length&&bad.every(Boolean))return bad.indexOf("gibberish")>=0?"gibberish":"notword";
     for(w=0;w<judged.length;w++)if(judged[w].length<=5&&!/[aeiou]/.test(judged[w])&&!knownWord(judged[w]))return "mash"; // "a gtrt"
   }
@@ -1974,6 +2014,7 @@ function broadcast(){
   try{c.publish(hostTopic()+"/state",JSON.stringify(s),{qos:0,retain:false})}catch(e){}
 }
 var saveT=null;
+DICT_LISTEN.push(function(w,yes){if(H&&yes){clearTimeout(L.dictPushT);L.dictPushT=setTimeout(push,150)}if(L.myAns){markDupes();updateStop()}});
 function push(){
   V=buildState(false);render();
   if(!bcT) bcT=setTimeout(broadcast,120);
@@ -2026,6 +2067,7 @@ function buildState(forWire){
   if(H.phase==="stopping")s.stopAge=now-H.stopAt; // devices that arrive very late skip the trailer
   var errs={};for(var eid in H.nameErr){if(now-H.nameErr[eid].at<10000)errs[eid]={why:H.nameErr[eid].why,nonce:H.nameErr[eid].nonce}}
   s.nameErr=errs;
+  s.dict=Object.keys(DICT).filter(function(w){return DICT[w]===true}).slice(-300); // words the host's dictionary confirmed
   if(H.phase==="vote"){
     s.answers=H.prompts.map(function(p,i){return Object.keys(A).filter(function(pid){return realAnswer(A[pid][i])}).map(function(pid){return {pid:pid,text:A[pid][i].trim(),rb:!ruleOkAt(A[pid],i,H.rule)}})});
     var sh=shameRound(H.game,H.round);
@@ -2074,6 +2116,7 @@ function hostHandle(d){
     if(!Array.isArray(d.answers))return;
     (H.answers[rk()]=H.answers[rk()]||{})[id]=d.answers.slice(0,H.prompts.length).map(function(a){return str(a,80)});
     while(H.answers[rk()][id].length<H.prompts.length)H.answers[rk()][id].push("");
+    H.answers[rk()][id].forEach(dictCheck);
     push();return;
   }
   if(d.t==="stop"){
@@ -2159,6 +2202,7 @@ function playerConnect(idx){
       if(topic!==pTopic()+"/state"||!d||d.t!=="state"||d.code!==pCode)return;
       if(typeof d.timeLeft==="number")d.deadlineLocal=Date.now()+d.timeLeft;
       V=d;lastState=Date.now();tries=0;
+      if(Array.isArray(d.dict))d.dict.forEach(function(w){if(typeof w==="string"&&/^[a-z]{3,30}$/.test(w))DICT[w]=true});
       var me=(d.players||[]).filter(function(p){return p.id===ME.id})[0];
       if(me){L.joined=true;L.joining=false;ME.name=me.name}                       // the host let us in (or we were already in)
       else if(L.joining&&d.nameErr&&d.nameErr[ME.id]&&d.nameErr[ME.id].nonce===L.nonce){L.joining=false;L.nameErr=d.nameErr[ME.id].why}
@@ -2206,9 +2250,9 @@ function ruleIdx(){var r=V&&V.rule,out=[];(L.myAns||[]).forEach(function(a,i){if
 function markDupes(){ // repeats, keyboard smashes and House Rule breaks all get a red underline and a note
   var d=dupIdx(),r=V&&V.rule;
   document.querySelectorAll(".ansin").forEach(function(el,i){
-    var a=L.myAns&&L.myAns[i],jr=junkReason(a),rb=!ruleOkAt(L.myAns,i,r)&&document.activeElement!==el,note=$("#note-"+i); // rule notes wait until you leave the box
-    el.classList.toggle("dup",d.indexOf(i)>=0||!!jr||rb);
-    if(note)note.textContent=jr?JUNK_MSG[jr]:rb?"House rule: "+ruleWhyAt(L.myAns,i,r):"";
+    var a=L.myAns&&L.myAns[i],jr=junkReason(a),wait=jr&&document.activeElement!==el&&dictCheck(a).length&&dictPending(a),rb=!ruleOkAt(L.myAns,i,r)&&document.activeElement!==el,note=$("#note-"+i); // rule notes wait until you leave the box
+    el.classList.toggle("dup",d.indexOf(i)>=0||(!!jr&&!wait)||rb);
+    if(note)note.textContent=wait?"Checking the dictionary…":jr?JUNK_MSG[jr]:rb?"House rule: "+ruleWhyAt(L.myAns,i,r):"";
   });
 }
 function showDupPop(i){
@@ -2297,8 +2341,9 @@ function renderHome(){
    '<div class="split">'+
     '<section class="sheet margin stack" aria-label="How it works">'+
      '<h2>How a round works</h2>'+
-     '<p>Every round rolls a <b>House Rule</b> that every answer has to follow that changes <i>how</i> you say every answer, never <i>what</i> you name (like <i>ALL CAPS</i>, <i>add a face like :)</i>, or <i>rate it out of 10</i>). It\'s always a quick add-on, because the prompts are hard enough. Break it and that answer doesn\'t count. Then everyone gets the same big stack of prompts (12 by default), dealt one at a time. Fill in every one as wrongly as possible, then slam <b>PENCILS DOWN</b> to end the round for everybody. Then you all judge each other. It gets personal.</p>'+
+     '<p>Every round rolls a <b>House Rule</b> that changes <i>how</i> you say every answer, never <i>what</i> you name (like <i>ALL CAPS</i>, <i>add a face like :)</i>, or <i>rate it out of 10</i>). It\'s always a quick add-on, because the prompts are hard enough. Break it and that answer doesn\'t count. Then everyone gets the same big stack of prompts (12 by default), dealt one at a time. Fill in every one as wrongly as possible, then slam <b>PENCILS DOWN</b> to end the round for everybody. Then you all judge each other. It gets personal.</p>'+
      '<p class="small">Each prompt has <b>0 to 20 conditions</b>. You won\'t get a reminder of the rule while you answer. No conditions? Name anything <i>except</i> that thing. Got conditions? Name the real thing, but break <i>every single one</i>.</p>'+
+     '<p class="small muted">Keyboard smashes don\'t count. Any word our filter doesn\'t recognize gets double-checked with the <a href="https://dictionaryapi.dev" target="_blank" rel="noopener">Free Dictionary API</a> (built on Wiktionary).</p>'+
      '<div>'+
       '<div class="ex"><div class="ptxt">Name a fruit.</div><span class="rule plain">Plain prompt: anything that isn\'t a fruit.</span>'+
        '<div class="marks"><span class="mark y"><b>✓</b>a trombone</span><span class="mark y"><b>✓</b>my uncle\'s boat</span><span class="mark n"><b>✗</b>banana</span></div></div>'+
@@ -2517,7 +2562,8 @@ function updateStop(){
 function pressStop(){
   if(!L.myAns.every(function(a){return a.trim()})){toast("Nice try. Fill in every answer before you call pencils down.");return}
   var ri=ruleIdx();if(ri.length){toast("Answer "+(ri[0]+1)+" breaks the House Rule. "+ruleWhyAt(L.myAns,ri[0],V.rule));sfx("boing");var re=$("#ans-"+ri[0]);if(re){re.focus();re.select()}return}
-  var jk=junkIdx();if(jk.length){toast("Answer "+(jk[0]+1)+" is a keyboard smash. Real (wrong) words only.");sfx("boing");var je=$("#ans-"+jk[0]);if(je){je.focus();je.select()}return}
+  if((L.myAns||[]).some(function(a){dictCheck(a);return dictPending(a)})){toast("Checking the dictionary for one of your answers. Try again in a second.");return}
+  var jk=junkIdx();if(jk.length){var jw=junkReason(L.myAns[jk[0]]);toast("Answer "+(jk[0]+1)+(jw==="notword"||jw==="gibberish"?" isn't in the dictionary. Real (wrong) words only.":" is a keyboard smash. Real (wrong) words only."));sfx("boing");var je=$("#ans-"+jk[0]);if(je){je.focus();je.select()}return}
   var d=dupIdx();if(d.length){L.dupShownFor="";showDupPop(d[d.length-1]);return}
   clearTimeout(L.ansTimer);L.ansTimer=null;sendAnswers();
   act({t:"stop",game:V.game,round:V.round});
